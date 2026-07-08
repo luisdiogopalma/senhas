@@ -38,6 +38,12 @@ const SPEAK_ENABLED     = true;               // the spoken announcement
 const VOICE_LANG        = "pt-PT";            // European Portuguese
 const ANNOUNCE_TEMPLATE = "Senha {n}, {room}"; // {n}=number, {room}=gabinete name
 
+/* English call (the "Call 🇬🇧" button on the control page).
+   {room} in English automatically becomes "Room X" when the
+   gabinete is named "Gabinete X". */
+const VOICE_LANG_EN        = "en-GB";
+const ANNOUNCE_TEMPLATE_EN = "Ticket {n}, {room}";
+
 
 /* 4) YOUR FIREBASE SETTINGS ─────────────────────────────────
    Paste the values from your Firebase project here.

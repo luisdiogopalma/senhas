@@ -13,45 +13,40 @@
   @font-face{font-family:"DIN";font-weight:500;font-style:italic;src:url("DIN-mediumitalic.otf") format("opentype");font-display:swap;}
 
   :root{
-    /* clinical light system — red is identity + the call moment, never ambience */
-    --paper:#F6F3EE;          /* warm porcelain environment */
-    --surface:#FFFFFF;        /* tiles, header */
-    --line:#E6DFD5;           /* hairline borders */
-    --ink:#17110E;            /* numbers, primary text */
-    --label:#6B5F58;          /* room labels, clock — 5.6:1 on white */
-    --waiting:#C9C0B4;        /* the idle em-dash */
-    --red:#E30613; --red-deep:#AA2A14;
-    --ok:#1E7A4C;
+    --paper:#F6F3EE; --surface:#FFFFFF; --line:#E6DFD5;
+    --ink:#17110E; --label:#4A403A;
+    --red:#E30613; --red-deep:#AA2A14; --ok:#1E7A4C;
     --num-size:16vmin; --ease-out:cubic-bezier(0.23, 1, 0.32, 1);
   }
   *{ box-sizing:border-box; margin:0; padding:0; }
   html,body{ height:100%; }
   body{
-    background:var(--paper);
-    color:var(--ink); font-family:"DIN", system-ui, sans-serif;
+    background:var(--paper); color:var(--ink);
+    font-family:"DIN", system-ui, sans-serif;
     display:flex; flex-direction:column; height:100vh; overflow:hidden; cursor:none;
   }
   body.show-cursor{ cursor:default; }
 
   header{
-    display:flex; align-items:center; gap: clamp(.8rem, 2vw, 1.6rem);
+    display:flex; align-items:baseline; justify-content:space-between; gap:1.5rem;
     background:var(--surface);
-    padding: clamp(.8rem, 2.4vh, 1.8rem) clamp(1.2rem, 4vw, 3.5rem);
+    padding: clamp(.8rem, 2.4vh, 1.7rem) clamp(1.2rem, 4vw, 3.5rem);
     border-bottom:3px solid var(--red);
     flex:0 0 auto;
   }
-  header .logo{ height: clamp(2.4rem, 7vh, 4.4rem); width:auto; display:block; }
-  .eyebrow{
-    font-weight:500; text-transform:uppercase; letter-spacing:.16em;
-    font-size: clamp(1.1rem, 3.2vh, 2.2rem); color:var(--ink);
+  .date{
+    font-weight:700; color:var(--red);
+    font-size: clamp(1.2rem, 3.6vh, 2.4rem); letter-spacing:.01em;
   }
   .clock{
-    margin-left:auto; font-weight:700; font-variant-numeric: tabular-nums;
-    color:var(--label); font-size: clamp(1.1rem, 3vh, 1.9rem); letter-spacing:.05em;
+    font-weight:700; font-variant-numeric: tabular-nums;
+    color:var(--label); font-size: clamp(1.5rem, 4.6vh, 3rem); letter-spacing:.04em;
   }
+  .clock .colon{ color:var(--red); }
 
   main{
     flex:1 1 auto; min-height:0; display:grid;
+    grid-template-columns: repeat(12, 1fr);
     gap: clamp(.6rem, 1.6vw, 1.3rem);
     padding: clamp(1rem, 3vh, 2.2rem) clamp(1.2rem, 4vw, 3.5rem);
   }
@@ -66,22 +61,26 @@
   }
   @keyframes rise{ to{ opacity:1; transform:none; } }
   .card .label{
-    font-weight:700; text-transform:uppercase; letter-spacing:.12em;
-    font-size: clamp(.75rem, 2.1vh, 1.4rem); color:var(--label); margin-bottom:.08em;
+    font-weight:700; text-transform:uppercase; letter-spacing:.11em;
+    font-size: clamp(.95rem, 2.7vh, 1.8rem); color:var(--label); margin-bottom:.08em;
   }
   .card .num{
     font-weight:900; line-height:.88; font-variant-numeric: tabular-nums;
-    font-size: var(--num-size); letter-spacing:-.01em;
-    transition: transform .28s var(--ease-out), color .28s var(--ease-out);
+    font-size: var(--num-size); letter-spacing:-.01em; min-height:.9em;
+    transition: color .25s var(--ease-out);
   }
-  .card .num.idle{ color:var(--waiting); font-weight:500; }
-  .card.bump .num{ transform: scale(1.05); color:var(--red); }
+  .card.logo-card img{ height:62%; max-height:100%; width:auto; max-width:80%; object-fit:contain; }
+
+  /* calling state: red number + blinking red ring, lasts the whole announcement */
+  .card.calling .num{ color:var(--red); }
   .card::after{
     content:""; position:absolute; inset:0; border-radius:inherit;
-    box-shadow: inset 0 0 0 0 rgba(227,6,19,0);
-    transition: box-shadow .55s var(--ease-out); pointer-events:none;
+    pointer-events:none; opacity:0;
+    box-shadow: inset 0 0 0 6px var(--red);
+    transition: opacity .4s var(--ease-out);
   }
-  .card.bump::after{ box-shadow: inset 0 0 0 6px var(--red); transition:none; }
+  .card.calling::after{ opacity:1; animation: blink 1s ease-in-out infinite; }
+  @keyframes blink{ 0%,100%{ opacity:1; } 50%{ opacity:.25; } }
 
   .video-wrap{ flex:0 0 auto; height:38vh; padding: 0 clamp(1.2rem,4vw,3.5rem) clamp(1.2rem,4vw,3.5rem); }
   .video-wrap.hidden{ display:none; }
@@ -118,16 +117,15 @@
 
   @media (prefers-reduced-motion: reduce){
     .card{ animation:none; opacity:1; transform:none; }
-    .card.bump .num{ transform:none; }
+    .card.calling::after{ animation:none; opacity:1; }  /* steady ring, no blink */
     .start{ transition:none; }
   }
 </style>
 </head>
 <body>
   <header>
-    <img class="logo" src="logo.svg" alt="G.A.T. CheckpointLX">
-    <div class="eyebrow" id="eyebrow">A atender</div>
-    <div class="clock" id="clock">--:--</div>
+    <div class="date" id="date">—</div>
+    <div class="clock" id="clock">--<span class="colon">:</span>--</div>
   </header>
 
   <main id="grid" aria-live="polite"></main>
@@ -141,7 +139,7 @@
   <div class="start" id="start">
     <img class="logo" src="logo.svg" alt="G.A.T. CheckpointLX">
     <button id="startBtn">Iniciar ecrã</button>
-    <p id="startBrand">Toque uma vez para ativar o som e o ecrã inteiro.</p>
+    <p>Toque uma vez para ativar o som e o ecrã inteiro.</p>
   </div>
 
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
@@ -149,15 +147,16 @@
   <script src="config.js"></script>
   <script>
   (function(){
-    var headerText = (typeof DISPLAY_HEADER === 'string') ? DISPLAY_HEADER : 'A atender';
-    document.getElementById('eyebrow').textContent = headerText;
-    document.title = headerText;
+    document.title = (typeof DISPLAY_HEADER === 'string') ? DISPLAY_HEADER : 'A atender';
 
-    // ---- clock ----
-    var clockEl = document.getElementById('clock');
+    // ---- date + clock (pt-PT, "Terça, 5 de Fevereiro de 2026") ----
+    var WEEKDAYS = ['Domingo','Segunda','Terça','Quarta','Quinta','Sexta','Sábado'];
+    var MONTHS = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+    var dateEl = document.getElementById('date'), clockEl = document.getElementById('clock');
     function tick(){
       var d = new Date();
-      clockEl.textContent = String(d.getHours()).padStart(2,'0') + ':' + String(d.getMinutes()).padStart(2,'0');
+      dateEl.textContent = WEEKDAYS[d.getDay()] + ', ' + d.getDate() + ' de ' + MONTHS[d.getMonth()] + ' de ' + d.getFullYear();
+      clockEl.innerHTML = String(d.getHours()).padStart(2,'0') + '<span class="colon">:</span>' + String(d.getMinutes()).padStart(2,'0');
     }
     tick(); setInterval(tick, 15000);
 
@@ -167,28 +166,39 @@
     var voiceLang = (typeof VOICE_LANG === 'string') ? VOICE_LANG : 'pt-PT';
     var template  = (typeof ANNOUNCE_TEMPLATE === 'string') ? ANNOUNCE_TEMPLATE : 'Senha {n}, {room}';
 
-    // ---- build the grid ----
+    // ---- build the grid: logo tile first, then the gabinetes ----
     var rooms = (Array.isArray(ROOMS) && ROOMS.length) ? ROOMS : ["Gabinete 1"];
-    var n = rooms.length;
-    var cols = n<=3 ? n : n===4 ? 2 : n<=6 ? 3 : n<=8 ? 4 : Math.ceil(Math.sqrt(n));
-    var rowCount = Math.ceil(n / cols);
     var grid = document.getElementById('grid');
-    // 12-col grid so a short last row stretches to fill the width (no empty hole)
-    grid.style.gridTemplateColumns = 'repeat(12, 1fr)';
-    var baseSpan = Math.floor(12 / cols);
-    var rem = n % cols;
-    var lastRowSpan = (rem > 0 && 12 % rem === 0) ? (12 / rem) : baseSpan;
-    var firstOfLastRow = n - (rem > 0 ? rem : cols);
+    var total = rooms.length + 1;                      // +1 for the logo tile
+    var cols = total<=3 ? total : total===4 ? 2 : total<=6 ? 3 : total<=8 ? 4 : Math.ceil(Math.sqrt(total));
+    var rowCount = Math.ceil(total / cols);
     document.documentElement.style.setProperty('--num-size',
       'min(' + Math.floor(60/rowCount) + 'vh, ' + Math.floor(80/cols) + 'vw, 15rem)');
+    var baseSpan = Math.floor(12 / cols);
+    var rem = total % cols;
+    var lastRowSpan = (rem > 0 && 12 % rem === 0) ? (12 / rem) : baseSpan;
+    var firstOfLastRow = total - (rem > 0 ? rem : cols);
+
+    function makeCard(idx){
+      var card = document.createElement('div');
+      card.className = 'card';
+      card.style.animationDelay = (idx*55) + 'ms';
+      card.style.gridColumn = 'span ' + ((rem > 0 && idx >= firstOfLastRow) ? lastRowSpan : baseSpan);
+      return card;
+    }
+
+    var logoCard = makeCard(0);
+    logoCard.classList.add('logo-card');
+    var logoImg = document.createElement('img');
+    logoImg.src = 'logo.svg'; logoImg.alt = 'G.A.T. CheckpointLX';
+    logoCard.appendChild(logoImg);
+    grid.appendChild(logoCard);
 
     var cells = [];
     rooms.forEach(function(name, i){
-      var card = document.createElement('div');
-      card.className = 'card'; card.style.animationDelay = (i*55) + 'ms';
-      card.style.gridColumn = 'span ' + ((rem > 0 && i >= firstOfLastRow) ? lastRowSpan : baseSpan);
+      var card = makeCard(i+1);
       var label = document.createElement('div'); label.className = 'label'; label.textContent = name;
-      var num = document.createElement('div'); num.className = 'num idle'; num.textContent = '—';
+      var num = document.createElement('div'); num.className = 'num'; num.textContent = '';
       card.appendChild(label); card.appendChild(num); grid.appendChild(card);
       cells.push({ card:card, num:num });
     });
@@ -244,24 +254,46 @@
     function speak(text){
       return new Promise(function(resolve){
         if (!speakOn || !('speechSynthesis' in window)){ resolve(); return; }
+        var done = false;
+        function finish(){ if (!done){ done = true; resolve(); } }
         try{
           var u = new SpeechSynthesisUtterance(text);
           u.lang = voiceLang; var v = pickVoice(); if (v) u.voice = v;
           u.rate = 0.98; u.pitch = 1; u.volume = 1;
-          u.onend = resolve; u.onerror = resolve;
+          u.onend = finish; u.onerror = finish;
           window.speechSynthesis.speak(u);
-        }catch(e){ resolve(); }
+          setTimeout(finish, 12000);   // safety: never blink forever if the voice hangs
+        }catch(e){ finish(); }
       });
     }
-    var queue = [], busy = false;
-    function announce(room, num){ queue.push({room:room, num:num}); if (!busy) drain(); }
+
+    // ---- announcement queue: visuals + sound move together ----
+    // Each item updates its tile, blinks it, chimes, and speaks — in that order,
+    // one call at a time. The tile only changes when its announcement plays.
+    var queue = [], busy = false, lastPlayed = { key:'', at:0 };
+    function announce(cellIndex, room, num){
+      queue.push({ i:cellIndex, room:room, num:num });
+      if (!busy) drain();
+    }
     function drain(){
       busy = true;
       (function nextItem(){
         if (!queue.length){ busy = false; return; }
         var item = queue.shift();
+        // dedupe: identical call arriving twice within 1.5s plays once
+        var key = item.i + ':' + item.num;
+        var now = Date.now();
+        if (key === lastPlayed.key && (now - lastPlayed.at) < 1500){ nextItem(); return; }
+        lastPlayed = { key:key, at:now };
+
+        var cell = cells[item.i];
+        cell.num.textContent = item.num;          // the number appears now…
+        cell.card.classList.add('calling');       // …and blinks red…
         var text = template.replace('{n}', item.num).replace('{room}', item.room);
-        chime().then(function(){ return speak(text); }).then(function(){ setTimeout(nextItem, 150); });
+        chime().then(function(){ return speak(text); }).then(function(){
+          cell.card.classList.remove('calling');  // …until the voice finishes
+          setTimeout(nextItem, 200);
+        });
       })();
     }
 
@@ -291,16 +323,21 @@
           var entry = data[i], nVal, callVal;
           if (entry && typeof entry === 'object'){ nVal = entry.n; callVal = entry.call || 0; }
           else { nVal = entry; callVal = 0; }
-          var shown = (nVal && nVal > 0) ? String(nVal) : '—';
-          if (cell.num.textContent !== shown) cell.num.textContent = shown;
-          cell.num.classList.toggle('idle', shown === '—');
 
-          if (cell.lastCall === undefined){ cell.lastCall = callVal; return; }
-          if (callVal !== cell.lastCall && nVal && nVal > 0){
-            cell.card.classList.remove('bump'); void cell.card.offsetWidth;
-            cell.card.classList.add('bump');
-            setTimeout(function(){ cell.card.classList.remove('bump'); }, 700);
-            announce(rooms[i], nVal);
+          if (cell.lastCall === undefined){
+            // first paint: show current state silently (blank when nothing called)
+            cell.num.textContent = (nVal && nVal > 0) ? String(nVal) : '';
+            cell.lastCall = callVal;
+            return;
+          }
+
+          if (callVal > cell.lastCall && nVal && nVal > 0){
+            // a real "Chamar": the tile updates when its announcement plays
+            announce(i, rooms[i], nVal);
+          } else {
+            // silent change (reset / cleared): update immediately, no sound
+            var shown = (nVal && nVal > 0) ? String(nVal) : '';
+            if (cell.num.textContent !== shown) cell.num.textContent = shown;
           }
           cell.lastCall = callVal;
         });
@@ -310,7 +347,7 @@
       db.ref('.info/connected').on('value', function(s){ dot.classList.toggle('off', !s.val()); });
     }catch(err){
       console.error('Firebase not configured yet:', err);
-      document.getElementById('eyebrow').textContent = 'Configurar Firebase — ver guia';
+      dateEl.textContent = 'Configurar Firebase — ver guia';
     }
   })();
   </script>
