@@ -13,49 +13,56 @@
   @font-face{font-family:"DIN";font-weight:500;font-style:italic;src:url("DIN-mediumitalic.otf") format("opentype");font-display:swap;}
 
   :root{
-    --bg-top:#2B0A0D; --bg-bot:#140406;
-    --card:#F5EFE8; --ink:#1A1012; --label:#8C6A63;
-    --eyebrow:#F3E7E5; --muted:#B98C8E;
+    /* clinical light system — red is identity + the call moment, never ambience */
+    --paper:#F6F3EE;          /* warm porcelain environment */
+    --surface:#FFFFFF;        /* tiles, header */
+    --line:#E6DFD5;           /* hairline borders */
+    --ink:#17110E;            /* numbers, primary text */
+    --label:#6B5F58;          /* room labels, clock — 5.6:1 on white */
+    --waiting:#C9C0B4;        /* the idle em-dash */
     --red:#E30613; --red-deep:#AA2A14;
+    --ok:#1E7A4C;
     --num-size:16vmin; --ease-out:cubic-bezier(0.23, 1, 0.32, 1);
   }
   *{ box-sizing:border-box; margin:0; padding:0; }
   html,body{ height:100%; }
   body{
-    background: radial-gradient(130% 100% at 50% 0%, var(--bg-top) 0%, var(--bg-bot) 100%);
-    color:#fff; font-family:"DIN", system-ui, sans-serif;
+    background:var(--paper);
+    color:var(--ink); font-family:"DIN", system-ui, sans-serif;
     display:flex; flex-direction:column; height:100vh; overflow:hidden; cursor:none;
   }
   body.show-cursor{ cursor:default; }
 
   header{
     display:flex; align-items:center; gap: clamp(.8rem, 2vw, 1.6rem);
-    padding: clamp(.9rem, 2.6vh, 2rem) clamp(1.2rem, 4vw, 3.5rem) clamp(.8rem, 2vh, 1.4rem);
-    border-bottom:2px solid var(--red);
+    background:var(--surface);
+    padding: clamp(.8rem, 2.4vh, 1.8rem) clamp(1.2rem, 4vw, 3.5rem);
+    border-bottom:3px solid var(--red);
     flex:0 0 auto;
   }
-  header .logo{ height: clamp(2.4rem, 7vh, 4.6rem); width:auto; display:block; }
+  header .logo{ height: clamp(2.4rem, 7vh, 4.4rem); width:auto; display:block; }
   .eyebrow{
     font-weight:500; text-transform:uppercase; letter-spacing:.16em;
-    font-size: clamp(1.1rem, 3.4vh, 2.3rem); color:var(--eyebrow);
+    font-size: clamp(1.1rem, 3.2vh, 2.2rem); color:var(--ink);
   }
   .clock{
     margin-left:auto; font-weight:700; font-variant-numeric: tabular-nums;
-    color:var(--muted); font-size: clamp(1.1rem, 3vh, 1.9rem); letter-spacing:.05em;
+    color:var(--label); font-size: clamp(1.1rem, 3vh, 1.9rem); letter-spacing:.05em;
   }
 
   main{
     flex:1 1 auto; min-height:0; display:grid;
-    gap: clamp(.6rem, 1.6vw, 1.4rem);
-    padding: clamp(1rem, 3vh, 2.4rem) clamp(1.2rem, 4vw, 3.5rem);
+    gap: clamp(.6rem, 1.6vw, 1.3rem);
+    padding: clamp(1rem, 3vh, 2.2rem) clamp(1.2rem, 4vw, 3.5rem);
   }
   .card{
-    background:var(--card); color:var(--ink);
-    border-radius: clamp(14px, 1.6vw, 24px);
+    background:var(--surface); color:var(--ink);
+    border:1px solid var(--line);
+    border-radius: clamp(14px, 1.6vw, 22px);
     display:flex; flex-direction:column; align-items:center; justify-content:center;
     min-height:0; position:relative; overflow:hidden;
-    box-shadow: 0 18px 40px -26px rgba(0,0,0,.8);
-    opacity:0; transform: translateY(10px); animation: rise .5s var(--ease-out) forwards;
+    box-shadow: 0 10px 26px -20px rgba(23,17,14,.35);
+    opacity:0; transform: translateY(8px); animation: rise .45s var(--ease-out) forwards;
   }
   @keyframes rise{ to{ opacity:1; transform:none; } }
   .card .label{
@@ -67,43 +74,47 @@
     font-size: var(--num-size); letter-spacing:-.01em;
     transition: transform .28s var(--ease-out), color .28s var(--ease-out);
   }
+  .card .num.idle{ color:var(--waiting); font-weight:500; }
   .card.bump .num{ transform: scale(1.05); color:var(--red); }
   .card::after{
     content:""; position:absolute; inset:0; border-radius:inherit;
-    box-shadow: 0 0 0 0 rgba(227,6,19,0);
+    box-shadow: inset 0 0 0 0 rgba(227,6,19,0);
     transition: box-shadow .55s var(--ease-out); pointer-events:none;
   }
-  .card.bump::after{ box-shadow: inset 0 0 0 7px var(--red); transition:none; }
+  .card.bump::after{ box-shadow: inset 0 0 0 6px var(--red); transition:none; }
 
   .video-wrap{ flex:0 0 auto; height:38vh; padding: 0 clamp(1.2rem,4vw,3.5rem) clamp(1.2rem,4vw,3.5rem); }
   .video-wrap.hidden{ display:none; }
   .video-wrap video{
     width:100%; height:100%; object-fit:cover;
-    border-radius: clamp(14px, 1.6vw, 24px); background:#000; display:block;
+    border-radius: clamp(14px, 1.6vw, 22px); background:#000; display:block;
+    border:1px solid var(--line);
   }
 
   .dot{
     position:fixed; right:.7rem; bottom:.7rem; width:9px; height:9px; border-radius:50%;
-    background:#4CB98B; opacity:.6; transition: background .3s ease, opacity .3s ease;
+    background:var(--ok); opacity:.55; transition: background .3s ease, opacity .3s ease;
   }
   .dot.off{ background:var(--red); opacity:.95; }
 
   .start{
     position:fixed; inset:0; z-index:50; cursor:default;
-    background: radial-gradient(130% 100% at 50% 22%, #3a0d11 0%, #120305 100%);
-    display:flex; flex-direction:column; align-items:center; justify-content:center; gap:1.6rem;
+    background:var(--paper);
+    display:flex; flex-direction:column; align-items:center; justify-content:center; gap:1.7rem;
     transition: opacity .4s var(--ease-out);
   }
   .start.hidden{ opacity:0; pointer-events:none; }
-  .start .logo{ height: clamp(6rem, 22vh, 12rem); width:auto; }
+  .start .logo{ height: clamp(6rem, 24vh, 13rem); width:auto; }
   .start button{
     font-family:"DIN", sans-serif; font-weight:700; font-size:1.4rem; text-transform:uppercase; letter-spacing:.06em;
     color:#fff; background:var(--red); border:0; border-radius:14px;
-    padding:1.05rem 2.8rem; cursor:pointer; transition: transform .12s var(--ease-out), filter .18s ease;
+    padding:1.05rem 2.8rem; cursor:pointer;
+    transition: transform .12s var(--ease-out), background .18s ease;
   }
-  .start button:hover{ filter:brightness(1.08); }
+  .start button:hover{ background:var(--red-deep); }
   .start button:active{ transform: scale(.97); }
-  .start p{ color:var(--muted); font-weight:500; font-size:1rem; max-width:28ch; text-align:center; line-height:1.5; }
+  .start button:focus-visible{ outline:3px solid var(--ink); outline-offset:3px; }
+  .start p{ color:var(--label); font-weight:500; font-size:1rem; max-width:28ch; text-align:center; line-height:1.5; }
 
   @media (prefers-reduced-motion: reduce){
     .card{ animation:none; opacity:1; transform:none; }
@@ -114,7 +125,7 @@
 </head>
 <body>
   <header>
-    <img class="logo" src="logo-light.svg" alt="G.A.T. CheckpointLX">
+    <img class="logo" src="logo.svg" alt="G.A.T. CheckpointLX">
     <div class="eyebrow" id="eyebrow">A atender</div>
     <div class="clock" id="clock">--:--</div>
   </header>
@@ -128,7 +139,7 @@
   <div class="dot off" id="dot" title="ligação"></div>
 
   <div class="start" id="start">
-    <img class="logo" src="logo-light.svg" alt="G.A.T. CheckpointLX">
+    <img class="logo" src="logo.svg" alt="G.A.T. CheckpointLX">
     <button id="startBtn">Iniciar ecrã</button>
     <p id="startBrand">Toque uma vez para ativar o som e o ecrã inteiro.</p>
   </div>
@@ -162,7 +173,12 @@
     var cols = n<=3 ? n : n===4 ? 2 : n<=6 ? 3 : n<=8 ? 4 : Math.ceil(Math.sqrt(n));
     var rowCount = Math.ceil(n / cols);
     var grid = document.getElementById('grid');
-    grid.style.gridTemplateColumns = 'repeat(' + cols + ', 1fr)';
+    // 12-col grid so a short last row stretches to fill the width (no empty hole)
+    grid.style.gridTemplateColumns = 'repeat(12, 1fr)';
+    var baseSpan = Math.floor(12 / cols);
+    var rem = n % cols;
+    var lastRowSpan = (rem > 0 && 12 % rem === 0) ? (12 / rem) : baseSpan;
+    var firstOfLastRow = n - (rem > 0 ? rem : cols);
     document.documentElement.style.setProperty('--num-size',
       'min(' + Math.floor(60/rowCount) + 'vh, ' + Math.floor(80/cols) + 'vw, 15rem)');
 
@@ -170,8 +186,9 @@
     rooms.forEach(function(name, i){
       var card = document.createElement('div');
       card.className = 'card'; card.style.animationDelay = (i*55) + 'ms';
+      card.style.gridColumn = 'span ' + ((rem > 0 && i >= firstOfLastRow) ? lastRowSpan : baseSpan);
       var label = document.createElement('div'); label.className = 'label'; label.textContent = name;
-      var num = document.createElement('div'); num.className = 'num'; num.textContent = '—';
+      var num = document.createElement('div'); num.className = 'num idle'; num.textContent = '—';
       card.appendChild(label); card.appendChild(num); grid.appendChild(card);
       cells.push({ card:card, num:num });
     });
@@ -276,6 +293,7 @@
           else { nVal = entry; callVal = 0; }
           var shown = (nVal && nVal > 0) ? String(nVal) : '—';
           if (cell.num.textContent !== shown) cell.num.textContent = shown;
+          cell.num.classList.toggle('idle', shown === '—');
 
           if (cell.lastCall === undefined){ cell.lastCall = callVal; return; }
           if (callVal !== cell.lastCall && nVal && nVal > 0){
