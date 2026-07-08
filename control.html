@@ -57,14 +57,26 @@
   .status .current{ color:var(--muted); font-weight:400; font-size:.95rem; }
   .status .current b{ color:var(--ink); font-weight:700; font-variant-numeric:tabular-nums; }
 
+  .entry-wrap{ position:relative; margin-bottom:.9rem; }
   .entry{
     background:var(--surface); border:1px solid var(--line); border-radius:16px;
     min-height:5.4rem; display:flex; align-items:center; justify-content:center;
     font-variant-numeric:tabular-nums; font-weight:900; font-size:3.6rem; line-height:1;
-    color:var(--ink); margin-bottom:.9rem; letter-spacing:.02em;
+    color:var(--ink); letter-spacing:.02em; padding:0 3.4rem;   /* symmetric: number stays centred */
     box-shadow: 0 8px 22px -18px rgba(23,17,14,.35);
   }
   .entry.empty{ color:var(--placeholder); font-weight:500; font-size:1.9rem; letter-spacing:.02em; }
+  .entry-erase{
+    position:absolute; right:.7rem; top:50%; transform:translateY(-50%);
+    display:flex; align-items:center; justify-content:center;
+    width:3rem; height:3rem; border-radius:12px;
+    background:transparent; border:0; color:var(--red); cursor:pointer;
+    -webkit-tap-highlight-color:transparent;
+    transition: background .15s ease, transform .1s var(--ease-out);
+  }
+  @media (hover:hover) and (pointer:fine){ .entry-erase:hover{ background:rgba(227,6,19,.08); } }
+  .entry-erase:active{ transform:translateY(-50%) scale(.92); }
+  .entry-erase:focus-visible{ outline:3px solid var(--red); outline-offset:2px; }
 
   .pad{ display:grid; grid-template-columns:repeat(3,1fr); gap:.6rem; }
   .key{
@@ -78,11 +90,12 @@
   }
   .key:active{ transform:scale(.96); }
   .key:focus-visible{ outline:3px solid var(--red); outline-offset:2px; }
-  .key.erase{ background:transparent; color:var(--red); border-color:rgba(227,6,19,.45); font-size:1.7rem; }
-  @media (hover:hover) and (pointer:fine){
-    .key.erase:hover{ background:rgba(227,6,19,.07); border-color:var(--red); }
+  .key.call{
+    background:var(--green); color:#fff; border-color:var(--green);
+    font-size:1.05rem; text-transform:uppercase; letter-spacing:.03em;
+    display:flex; align-items:center; justify-content:center; gap:.45rem;
   }
-  .key.call{ background:var(--green); color:#fff; border-color:var(--green); font-size:1.25rem; text-transform:uppercase; letter-spacing:.04em; }
+  .key.call .flag{ width:1.5rem; height:1rem; border-radius:2px; flex:0 0 auto; box-shadow:0 0 0 1px rgba(0,0,0,.12); }
   @media (hover:hover) and (pointer:fine){
     .key.call:hover{ background:var(--green-deep); border-color:var(--green-deep); }
     .key.call.recall:hover{ background:var(--amber-deep); border-color:var(--amber-deep); }
@@ -129,7 +142,12 @@
       <span class="current">Na chamada: <b id="current">—</b></span>
     </div>
 
-    <div class="entry empty" id="entry">senha</div>
+    <div class="entry-wrap">
+      <div class="entry empty" id="entry">senha</div>
+      <button class="entry-erase" id="erase" tabindex="-1" title="Apagar" hidden>
+        <svg viewBox="0 0 24 24" width="26" height="26" aria-hidden="true"><path fill="currentColor" d="M9.4 5c-.6 0-1.2.3-1.6.8l-4.5 5.6c-.3.4-.3.9 0 1.2l4.5 5.6c.4.5 1 .8 1.6.8H20c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2H9.4zm3 3.3 2.1 2.1 2.1-2.1c.3-.3.8-.3 1.1 0 .3.3.3.8 0 1.1L15.6 11.5l2.1 2.1c.3.3.3.8 0 1.1-.3.3-.8.3-1.1 0l-2.1-2.1-2.1 2.1c-.3.3-.8.3-1.1 0-.3-.3-.3-.8 0-1.1l2.1-2.1-2.1-2.1c-.3-.3-.3-.8 0-1.1.3-.3.8-.3 1.1 0z"/></svg>
+      </button>
+    </div>
 
     <div class="pad">
       <button class="key" data-d="7" tabindex="-1">7</button>
@@ -141,15 +159,21 @@
       <button class="key" data-d="1" tabindex="-1">1</button>
       <button class="key" data-d="2" tabindex="-1">2</button>
       <button class="key" data-d="3" tabindex="-1">3</button>
-      <button class="key erase" id="erase" tabindex="-1" title="Apagar">⌫</button>
+      <button class="key call" id="callEn" tabindex="-1">
+        <svg class="flag" viewBox="0 0 30 20" aria-hidden="true"><rect width="30" height="20" fill="#012169"/><path d="M0,0 30,20 M30,0 0,20" stroke="#fff" stroke-width="4"/><path d="M0,0 30,20 M30,0 0,20" stroke="#C8102E" stroke-width="1.8"/><rect x="12.5" width="5" height="20" fill="#fff"/><rect y="7.5" width="30" height="5" fill="#fff"/><rect x="13.5" width="3" height="20" fill="#C8102E"/><rect y="8.5" width="30" height="3" fill="#C8102E"/></svg>
+        <span id="callEnLabel">Call</span>
+      </button>
       <button class="key" data-d="0" tabindex="-1">0</button>
-      <button class="key call" id="call" tabindex="-1">Chamar ✓</button>
+      <button class="key call" id="callPt" tabindex="-1">
+        <svg class="flag" viewBox="0 0 30 20" aria-hidden="true"><rect width="30" height="20" fill="#DA291C"/><rect width="12" height="20" fill="#046A38"/><circle cx="12" cy="10" r="4.6" fill="#FFE900"/><circle cx="12" cy="10" r="2.6" fill="#DA291C"/><circle cx="12" cy="10" r="2.6" fill="none" stroke="#fff" stroke-width=".9"/></svg>
+        <span id="callPtLabel">Chamar</span>
+      </button>
     </div>
   </div>
 
   <div class="footer">
     <button class="reset" id="resetAll">Repor tudo a zero</button>
-    <p class="hint">Cada gabinete abre a sua própria página (fica guardada neste dispositivo). Escreva com o teclado numérico e carregue em <b>Enter</b> para chamar. Depois de chamar, o botão fica amarelo — carregue outra vez para <b>rechamar</b> a mesma senha, ou escreva um novo número para recomeçar.</p>
+    <p class="hint">Cada gabinete abre a sua própria página (fica guardada neste dispositivo). Escreva com o teclado numérico e carregue em <b>Enter</b> para chamar. <b>Enter</b> chama em português; o botão <b>Call</b> chama em inglês. Depois de chamar, o botão usado fica amarelo — carregue outra vez para <b>rechamar</b> a mesma senha (ou no outro idioma), e escreva um novo número para recomeçar.</p>
   </div>
 </div>
 
@@ -171,11 +195,16 @@
   var whoEl     = document.getElementById('who');
   var currentEl = document.getElementById('current');
   var entryEl   = document.getElementById('entry');
-  var callBtn   = document.getElementById('call');
+  var eraseBtn  = document.getElementById('erase');
+  var callPt    = document.getElementById('callPt');
+  var callEn    = document.getElementById('callEn');
+  var callPtLabel = document.getElementById('callPtLabel');
+  var callEnLabel = document.getElementById('callEnLabel');
 
   var selected = null;
   var entry = '';
-  var justCalled = false;
+  var justCalled = false;      // a call was made and no new digits typed yet
+  var lastLang = null;         // 'pt' | 'en' — which button made the last call
   var latest = {};
 
   function save(i){ try{ localStorage.setItem('senha-gabinete', String(i)); }catch(e){} }
@@ -213,45 +242,55 @@
     currentEl.textContent = (num && num > 0) ? num : '—';
   }
 
-  function setCallState(called){
+  function setCallState(called, lang){
     justCalled = called;
-    if (called){ callBtn.classList.add('recall'); callBtn.innerHTML = 'Rechamar ↻'; }
-    else { callBtn.classList.remove('recall'); callBtn.innerHTML = 'Chamar ✓'; }
+    lastLang = called ? lang : null;
+    // the button that made the call shows its recall state; the other stays green
+    callPt.classList.toggle('recall', called && lang === 'pt');
+    callPtLabel.textContent = (called && lang === 'pt') ? 'Rechamar ↻' : 'Chamar';
+    callEn.classList.toggle('recall', called && lang === 'en');
+    callEnLabel.textContent = (called && lang === 'en') ? 'Recall ↻' : 'Call';
   }
 
   function renderEntry(){
     if (entry === ''){ entryEl.textContent = 'senha'; entryEl.classList.add('empty'); }
     else { entryEl.textContent = entry; entryEl.classList.remove('empty'); }
+    eraseBtn.hidden = (entry === '');
   }
   function addDigit(d){
     if (selected === null) return;
-    if (justCalled){ entry = ''; setCallState(false); }
+    if (justCalled){ entry = ''; setCallState(false); }   // typing starts a fresh senha
     if (entry.length < MAX_DIGITS && !(entry === '' && d === '0')){ entry += d; }
     renderEntry();
   }
   function eraseDigit(){ if (justCalled) setCallState(false); entry = entry.slice(0, -1); renderEntry(); }
   function clearEntry(){ entry = ''; setCallState(false); renderEntry(); }
 
-  function call(){
+  function call(lang){
     if (selected === null || !db) return;
     var val = parseInt(entry, 10);
     if (isNaN(val) || val <= 0) return;
-    db.ref('queue/' + selected).transaction(function(cur){ cur = cur || {}; return { n: val, call: (cur.call || 0) + 1 }; });
-    callBtn.classList.remove('flash'); void callBtn.offsetWidth; callBtn.classList.add('flash');
-    setCallState(true);
+    db.ref('queue/' + selected).transaction(function(cur){
+      cur = cur || {};
+      return { n: val, call: (cur.call || 0) + 1, lang: lang };
+    });
+    var btn = (lang === 'en') ? callEn : callPt;
+    btn.classList.remove('flash'); void btn.offsetWidth; btn.classList.add('flash');
+    setCallState(true, lang);
   }
 
   document.querySelectorAll('.key[data-d]').forEach(function(k){
     k.addEventListener('click', function(){ addDigit(k.getAttribute('data-d')); this.blur(); });
   });
-  document.getElementById('erase').addEventListener('click', function(){ eraseDigit(); this.blur(); });
-  callBtn.addEventListener('click', function(){ call(); this.blur(); });
+  eraseBtn.addEventListener('click', function(){ eraseDigit(); this.blur(); });
+  callPt.addEventListener('click', function(){ call('pt'); this.blur(); });
+  callEn.addEventListener('click', function(){ call('en'); this.blur(); });
 
   document.addEventListener('keydown', function(e){
     if (selected === null) return;
     if (e.key >= '0' && e.key <= '9'){ addDigit(e.key); }
     else if (e.key === 'Backspace'){ e.preventDefault(); eraseDigit(); }
-    else if (e.key === 'Enter'){ e.preventDefault(); call(); }
+    else if (e.key === 'Enter'){ e.preventDefault(); call('pt'); }   // Enter = Portuguese
     else if (e.key === 'Escape'){ clearEntry(); }
   });
 
