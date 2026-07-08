@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>A atender</title>
+<style>
+  @font-face{font-family:"DIN";font-weight:300;font-style:normal;src:url("DINLig.otf") format("opentype");font-display:swap;}
+  @font-face{font-family:"DIN";font-weight:400;font-style:normal;src:url("DINreg.otf") format("opentype");font-display:swap;}
+  @font-face{font-family:"DIN";font-weight:500;font-style:normal;src:url("DINMed.otf") format("opentype");font-display:swap;}
+  @font-face{font-family:"DIN";font-weight:700;font-style:normal;src:url("DINBol.otf") format("opentype");font-display:swap;}
+  @font-face{font-family:"DIN";font-weight:900;font-style:normal;src:url("DINBla.otf") format("opentype");font-display:swap;}
+  @font-face{font-family:"DIN";font-weight:500;font-style:italic;src:url("DIN-mediumitalic.otf") format("opentype");font-display:swap;}
+
+  :root{
+    --bg-top:#2B0A0D; --bg-bot:#140406;
+    --card:#F5EFE8; --ink:#1A1012; --label:#8C6A63;
+    --eyebrow:#F3E7E5; --muted:#B98C8E;
+    --red:#E30613; --red-deep:#AA2A14;
+    --num-size:16vmin; --ease-out:cubic-bezier(0.23, 1, 0.32, 1);
+  }
+  *{ box-sizing:border-box; margin:0; padding:0; }
+  html,body{ height:100%; }
+  body{
+    background: radial-gradient(130% 100% at 50% 0%, var(--bg-top) 0%, var(--bg-bot) 100%);
+    color:#fff; font-family:"DIN", system-ui, sans-serif;
+    display:flex; flex-direction:column; height:100vh; overflow:hidden; cursor:none;
+  }
+  body.show-cursor{ cursor:default; }
+
+  header{
+    display:flex; align-items:center; gap: clamp(.8rem, 2vw, 1.6rem);
+    padding: clamp(.9rem, 2.6vh, 2rem) clamp(1.2rem, 4vw, 3.5rem) clamp(.8rem, 2vh, 1.4rem);
+    border-bottom:2px solid var(--red);
+    flex:0 0 auto;
+  }
+  header .logo{ height: clamp(2.4rem, 7vh, 4.6rem); width:auto; display:block; }
+  .eyebrow{
+    font-weight:500; text-transform:uppercase; letter-spacing:.16em;
+    font-size: clamp(1.1rem, 3.4vh, 2.3rem); color:var(--eyebrow);
+  }
+  .clock{
+    margin-left:auto; font-weight:700; font-variant-numeric: tabular-nums;
+    color:var(--muted); font-size: clamp(1.1rem, 3vh, 1.9rem); letter-spacing:.05em;
+  }
+
+  main{
+    flex:1 1 auto; min-height:0; display:grid;
+    gap: clamp(.6rem, 1.6vw, 1.4rem);
+    padding: clamp(1rem, 3vh, 2.4rem) clamp(1.2rem, 4vw, 3.5rem);
+  }
+  .card{
+    background:var(--card); color:var(--ink);
+    border-radius: clamp(14px, 1.6vw, 24px);
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    min-height:0; position:relative; overflow:hidden;
+    box-shadow: 0 18px 40px -26px rgba(0,0,0,.8);
+    opacity:0; transform: translateY(10px); animation: rise .5s var(--ease-out) forwards;
+  }
+  @keyframes rise{ to{ opacity:1; transform:none; } }
+  .card .label{
+    font-weight:700; text-transform:uppercase; letter-spacing:.12em;
+    font-size: clamp(.75rem, 2.1vh, 1.4rem); color:var(--label); margin-bottom:.08em;
+  }
+  .card .num{
+    font-weight:900; line-height:.88; font-variant-numeric: tabular-nums;
+    font-size: var(--num-size); letter-spacing:-.01em;
+    transition: transform .28s var(--ease-out), color .28s var(--ease-out);
+  }
+  .card.bump .num{ transform: scale(1.05); color:var(--red); }
+  .card::after{
+    content:""; position:absolute; inset:0; border-radius:inherit;
+    box-shadow: 0 0 0 0 rgba(227,6,19,0);
+    transition: box-shadow .55s var(--ease-out); pointer-events:none;
+  }
+  .card.bump::after{ box-shadow: inset 0 0 0 7px var(--red); transition:none; }
+
+  .video-wrap{ flex:0 0 auto; height:38vh; padding: 0 clamp(1.2rem,4vw,3.5rem) clamp(1.2rem,4vw,3.5rem); }
+  .video-wrap.hidden{ display:none; }
+  .video-wrap video{
+    width:100%; height:100%; object-fit:cover;
+    border-radius: clamp(14px, 1.6vw, 24px); background:#000; display:block;
+  }
+
+  .dot{
+    position:fixed; right:.7rem; bottom:.7rem; width:9px; height:9px; border-radius:50%;
+    background:#4CB98B; opacity:.6; transition: background .3s ease, opacity .3s ease;
+  }
+  .dot.off{ background:var(--red); opacity:.95; }
+
+  .start{
+    position:fixed; inset:0; z-index:50; cursor:default;
+    background: radial-gradient(130% 100% at 50% 22%, #3a0d11 0%, #120305 100%);
+    display:flex; flex-direction:column; align-items:center; justify-content:center; gap:1.6rem;
+    transition: opacity .4s var(--ease-out);
+  }
+  .start.hidden{ opacity:0; pointer-events:none; }
+  .start .logo{ height: clamp(6rem, 22vh, 12rem); width:auto; }
+  .start button{
+    font-family:"DIN", sans-serif; font-weight:700; font-size:1.4rem; text-transform:uppercase; letter-spacing:.06em;
+    color:#fff; background:var(--red); border:0; border-radius:14px;
+    padding:1.05rem 2.8rem; cursor:pointer; transition: transform .12s var(--ease-out), filter .18s ease;
+  }
+  .start button:hover{ filter:brightness(1.08); }
+  .start button:active{ transform: scale(.97); }
+  .start p{ color:var(--muted); font-weight:500; font-size:1rem; max-width:28ch; text-align:center; line-height:1.5; }
+
+  @media (prefers-reduced-motion: reduce){
+    .card{ animation:none; opacity:1; transform:none; }
+    .card.bump .num{ transform:none; }
+    .start{ transition:none; }
+  }
+</style>
+</head>
+<body>
+  <header>
+    <img class="logo" src="logo-light.svg" alt="G.A.T. CheckpointLX">
+    <div class="eyebrow" id="eyebrow">A atender</div>
+    <div class="clock" id="clock">--:--</div>
+  </header>
+
+  <main id="grid" aria-live="polite"></main>
+
+  <div class="video-wrap" id="videoWrap">
+    <video id="vid" src="video.mp4" autoplay loop muted playsinline></video>
+  </div>
+
+  <div class="dot off" id="dot" title="ligação"></div>
+
+  <div class="start" id="start">
+    <img class="logo" src="logo-light.svg" alt="G.A.T. CheckpointLX">
+    <button id="startBtn">Iniciar ecrã</button>
+    <p id="startBrand">Toque uma vez para ativar o som e o ecrã inteiro.</p>
+  </div>
+
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+  <script src="config.js"></script>
+  <script>
+  (function(){
+    var headerText = (typeof DISPLAY_HEADER === 'string') ? DISPLAY_HEADER : 'A atender';
+    document.getElementById('eyebrow').textContent = headerText;
+    document.title = headerText;
+
+    // ---- clock ----
+    var clockEl = document.getElementById('clock');
+    function tick(){
+      var d = new Date();
+      clockEl.textContent = String(d.getHours()).padStart(2,'0') + ':' + String(d.getMinutes()).padStart(2,'0');
+    }
+    tick(); setInterval(tick, 15000);
+
+    // ---- options with safe fallbacks ----
+    var soundOn   = (typeof SOUND_ENABLED === 'boolean') ? SOUND_ENABLED : true;
+    var speakOn   = (typeof SPEAK_ENABLED === 'boolean') ? SPEAK_ENABLED : true;
+    var voiceLang = (typeof VOICE_LANG === 'string') ? VOICE_LANG : 'pt-PT';
+    var template  = (typeof ANNOUNCE_TEMPLATE === 'string') ? ANNOUNCE_TEMPLATE : 'Senha {n}, {room}';
+
+    // ---- build the grid ----
+    var rooms = (Array.isArray(ROOMS) && ROOMS.length) ? ROOMS : ["Gabinete 1"];
+    var n = rooms.length;
+    var cols = n<=3 ? n : n===4 ? 2 : n<=6 ? 3 : n<=8 ? 4 : Math.ceil(Math.sqrt(n));
+    var rowCount = Math.ceil(n / cols);
+    var grid = document.getElementById('grid');
+    grid.style.gridTemplateColumns = 'repeat(' + cols + ', 1fr)';
+    document.documentElement.style.setProperty('--num-size',
+      'min(' + Math.floor(60/rowCount) + 'vh, ' + Math.floor(80/cols) + 'vw, 15rem)');
+
+    var cells = [];
+    rooms.forEach(function(name, i){
+      var card = document.createElement('div');
+      card.className = 'card'; card.style.animationDelay = (i*55) + 'ms';
+      var label = document.createElement('div'); label.className = 'label'; label.textContent = name;
+      var num = document.createElement('div'); num.className = 'num'; num.textContent = '—';
+      card.appendChild(label); card.appendChild(num); grid.appendChild(card);
+      cells.push({ card:card, num:num });
+    });
+
+    // ---- video: hide the band if the file is missing ----
+    var vid = document.getElementById('vid');
+    var videoWrap = document.getElementById('videoWrap');
+    vid.addEventListener('error', function(){ videoWrap.classList.add('hidden'); });
+
+    // ---- keep the screen awake ----
+    function requestWake(){ if ('wakeLock' in navigator){ navigator.wakeLock.request('screen').catch(function(){}); } }
+    document.addEventListener('visibilitychange', function(){ if(!document.hidden) requestWake(); });
+
+    // ---- reveal cursor briefly on mouse move ----
+    var curT; window.addEventListener('mousemove', function(){
+      document.body.classList.add('show-cursor');
+      clearTimeout(curT); curT = setTimeout(function(){ document.body.classList.remove('show-cursor'); }, 2500);
+    });
+
+    // ================= SOUND + VOICE =================
+    var audioCtx = null;
+    function ensureAudio(){
+      if (!audioCtx){ var AC = window.AudioContext || window.webkitAudioContext; if (AC) audioCtx = new AC(); }
+      if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
+    }
+    function chime(){
+      return new Promise(function(resolve){
+        if (!soundOn || !audioCtx){ resolve(); return; }
+        var now = audioCtx.currentTime;
+        [{f:784, t:0}, {f:1046.5, t:0.16}].forEach(function(note){
+          var o = audioCtx.createOscillator(), g = audioCtx.createGain();
+          o.type='sine'; o.frequency.value=note.f; o.connect(g); g.connect(audioCtx.destination);
+          var s = now + note.t;
+          g.gain.setValueAtTime(0.0001, s);
+          g.gain.exponentialRampToValueAtTime(0.16, s+0.012);
+          g.gain.exponentialRampToValueAtTime(0.0001, s+0.5);
+          o.start(s); o.stop(s+0.55);
+        });
+        setTimeout(resolve, 620);
+      });
+    }
+    var voices = [];
+    function loadVoices(){ if ('speechSynthesis' in window) voices = window.speechSynthesis.getVoices() || []; }
+    if ('speechSynthesis' in window){ loadVoices(); window.speechSynthesis.onvoiceschanged = loadVoices; }
+    function pickVoice(){
+      if (!voices.length) loadVoices();
+      var lang = voiceLang.toLowerCase();
+      var exact = voices.filter(function(v){ return v.lang && v.lang.toLowerCase() === lang; });
+      if (exact.length) return exact[0];
+      var pt = voices.filter(function(v){ return v.lang && v.lang.toLowerCase().indexOf('pt') === 0; });
+      return pt.length ? pt[0] : null;
+    }
+    function speak(text){
+      return new Promise(function(resolve){
+        if (!speakOn || !('speechSynthesis' in window)){ resolve(); return; }
+        try{
+          var u = new SpeechSynthesisUtterance(text);
+          u.lang = voiceLang; var v = pickVoice(); if (v) u.voice = v;
+          u.rate = 0.98; u.pitch = 1; u.volume = 1;
+          u.onend = resolve; u.onerror = resolve;
+          window.speechSynthesis.speak(u);
+        }catch(e){ resolve(); }
+      });
+    }
+    var queue = [], busy = false;
+    function announce(room, num){ queue.push({room:room, num:num}); if (!busy) drain(); }
+    function drain(){
+      busy = true;
+      (function nextItem(){
+        if (!queue.length){ busy = false; return; }
+        var item = queue.shift();
+        var text = template.replace('{n}', item.num).replace('{room}', item.room);
+        chime().then(function(){ return speak(text); }).then(function(){ setTimeout(nextItem, 150); });
+      })();
+    }
+
+    // ---- start overlay (one tap unlocks sound + fullscreen) ----
+    var overlay = document.getElementById('start');
+    function startDisplay(){
+      ensureAudio();
+      if (speakOn && 'speechSynthesis' in window){
+        try{ var w = new SpeechSynthesisUtterance(' '); w.volume = 0; window.speechSynthesis.speak(w); }catch(e){}
+      }
+      var el = document.documentElement;
+      if (el.requestFullscreen) el.requestFullscreen().catch(function(){});
+      requestWake();
+      overlay.classList.add('hidden');
+    }
+    document.getElementById('startBtn').addEventListener('click', startDisplay);
+    if (!soundOn && !speakOn){ requestWake(); overlay.classList.add('hidden'); }
+
+    // ================= Firebase live sync =================
+    try{
+      firebase.initializeApp(firebaseConfig);
+      var db = firebase.database();
+
+      db.ref('queue').on('value', function(snap){
+        var data = snap.val() || {};
+        cells.forEach(function(cell, i){
+          var entry = data[i], nVal, callVal;
+          if (entry && typeof entry === 'object'){ nVal = entry.n; callVal = entry.call || 0; }
+          else { nVal = entry; callVal = 0; }
+          var shown = (nVal && nVal > 0) ? String(nVal) : '—';
+          if (cell.num.textContent !== shown) cell.num.textContent = shown;
+
+          if (cell.lastCall === undefined){ cell.lastCall = callVal; return; }
+          if (callVal !== cell.lastCall && nVal && nVal > 0){
+            cell.card.classList.remove('bump'); void cell.card.offsetWidth;
+            cell.card.classList.add('bump');
+            setTimeout(function(){ cell.card.classList.remove('bump'); }, 700);
+            announce(rooms[i], nVal);
+          }
+          cell.lastCall = callVal;
+        });
+      });
+
+      var dot = document.getElementById('dot');
+      db.ref('.info/connected').on('value', function(s){ dot.classList.toggle('off', !s.val()); });
+    }catch(err){
+      console.error('Firebase not configured yet:', err);
+      document.getElementById('eyebrow').textContent = 'Configurar Firebase — ver guia';
+    }
+  })();
+  </script>
+</body>
+</html>
