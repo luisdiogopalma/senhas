@@ -12,34 +12,38 @@
   @font-face{font-family:"DIN";font-weight:900;font-style:normal;src:url("DINBla.otf") format("opentype");font-display:swap;}
 
   :root{
-    --bg-top:#2B0A0D; --bg-bot:#140406;
-    --panel:#2A0E11; --panel-2:#3A1317; --line:#4A1A1E;
-    --ink:#F3E7E5; --muted:#B98C8E;
-    --red:#E30613; --green:#2FA96A; --green-ink:#06210F;
-    --amber:#E7A32F; --amber-ink:#2A1B04;
+    --paper:#F6F3EE; --surface:#FFFFFF; --surface-2:#FBF9F5;
+    --line:#E6DFD5; --line-strong:#D5CCBF;
+    --ink:#17110E; --muted:#6B5F58; --placeholder:#A79B8F;
+    --red:#E30613; --red-deep:#AA2A14;
+    --green:#1E7A4C; --green-deep:#16603B;
+    --amber:#F0B429; --amber-ink:#3A2A05; --amber-deep:#E0A31A;
     --ease-out:cubic-bezier(0.23, 1, 0.32, 1);
   }
   *{ box-sizing:border-box; margin:0; padding:0; }
   body{
-    background: radial-gradient(130% 90% at 50% 0%, var(--bg-top) 0%, var(--bg-bot) 100%);
-    color:var(--ink); font-family:"DIN", system-ui, sans-serif;
+    background:var(--paper); color:var(--ink);
+    font-family:"DIN", system-ui, sans-serif;
     min-height:100vh; padding: max(1rem, env(safe-area-inset-top)) 1rem 2rem;
   }
   .shell{ max-width:460px; margin:0 auto; }
-  header{ display:flex; align-items:center; gap:.75rem; padding:1rem .2rem 1rem; border-bottom:2px solid var(--red); margin-bottom:1rem; }
+  header{ display:flex; align-items:center; gap:.75rem; padding:1rem .1rem; border-bottom:3px solid var(--red); margin-bottom:1.1rem; }
   header .logo{ height:2.6rem; width:auto; }
-  h1{ font-weight:700; font-size:1.35rem; letter-spacing:.01em; }
+  h1{ font-weight:700; font-size:1.3rem; letter-spacing:.01em; }
   .conn{ margin-left:auto; font-weight:500; font-size:.78rem; color:var(--muted); display:flex; align-items:center; gap:.4rem; white-space:nowrap; }
   .conn i{ width:8px; height:8px; border-radius:50%; background:var(--green); display:inline-block; }
   .conn.off i{ background:var(--red); }
 
-  .rooms{ display:flex; flex-wrap:wrap; gap:.4rem; margin-bottom:1rem; }
+  .rooms{ display:flex; flex-wrap:wrap; gap:.4rem; margin-bottom:1.1rem; }
   .chip{
     font-family:inherit; font-weight:500; font-size:.95rem; color:var(--muted);
-    background:var(--panel); border:1px solid var(--line); border-radius:999px;
-    padding:.5rem .9rem; cursor:pointer; transition: all .15s var(--ease-out);
+    background:var(--surface); border:1px solid var(--line); border-radius:999px;
+    padding:.5rem .9rem; cursor:pointer;
+    transition: color .15s ease, border-color .15s ease, background .15s ease;
   }
-  .chip:hover{ color:var(--ink); }
+  @media (hover:hover) and (pointer:fine){
+    .chip:hover{ color:var(--ink); border-color:var(--line-strong); }
+  }
   .chip:focus-visible{ outline:3px solid var(--red); outline-offset:2px; }
   .chip.active{ background:var(--red); color:#fff; border-color:var(--red); font-weight:700; }
 
@@ -54,39 +58,50 @@
   .status .current b{ color:var(--ink); font-weight:700; font-variant-numeric:tabular-nums; }
 
   .entry{
-    background:var(--panel); border:1px solid var(--line); border-radius:16px;
+    background:var(--surface); border:1px solid var(--line); border-radius:16px;
     min-height:5.4rem; display:flex; align-items:center; justify-content:center;
     font-variant-numeric:tabular-nums; font-weight:900; font-size:3.6rem; line-height:1;
-    color:#fff; margin-bottom:.9rem; letter-spacing:.02em;
+    color:var(--ink); margin-bottom:.9rem; letter-spacing:.02em;
+    box-shadow: 0 8px 22px -18px rgba(23,17,14,.35);
   }
-  .entry.empty{ color:#7A4E4E; font-weight:500; font-size:2rem; letter-spacing:.02em; }
+  .entry.empty{ color:var(--placeholder); font-weight:500; font-size:1.9rem; letter-spacing:.02em; }
 
   .pad{ display:grid; grid-template-columns:repeat(3,1fr); gap:.6rem; }
   .key{
     font-family:inherit; font-weight:700; font-size:2rem; color:var(--ink);
-    background:var(--panel-2); border:1px solid var(--line); border-radius:16px;
+    background:var(--surface); border:1px solid var(--line); border-radius:16px;
     padding:1.05rem 0; cursor:pointer; -webkit-tap-highlight-color:transparent;
-    transition: transform .1s var(--ease-out), filter .15s ease;
+    transition: transform .1s var(--ease-out), background .15s ease, border-color .15s ease;
   }
-  .key:hover{ filter:brightness(1.12); }
+  @media (hover:hover) and (pointer:fine){
+    .key:hover{ background:var(--surface-2); border-color:var(--line-strong); }
+  }
   .key:active{ transform:scale(.96); }
-  .key.erase{ background:transparent; color:var(--red); border-color:rgba(227,6,19,.5); font-size:1.7rem; }
-  .key.erase:hover{ background:rgba(227,6,19,.14); }
-  .key.call{ background:var(--green); color:var(--green-ink); border-color:var(--green); font-size:1.25rem; text-transform:uppercase; letter-spacing:.04em; }
-  .key.call:hover{ filter:brightness(1.06); }
+  .key:focus-visible{ outline:3px solid var(--red); outline-offset:2px; }
+  .key.erase{ background:transparent; color:var(--red); border-color:rgba(227,6,19,.45); font-size:1.7rem; }
+  @media (hover:hover) and (pointer:fine){
+    .key.erase:hover{ background:rgba(227,6,19,.07); border-color:var(--red); }
+  }
+  .key.call{ background:var(--green); color:#fff; border-color:var(--green); font-size:1.25rem; text-transform:uppercase; letter-spacing:.04em; }
+  @media (hover:hover) and (pointer:fine){
+    .key.call:hover{ background:var(--green-deep); border-color:var(--green-deep); }
+    .key.call.recall:hover{ background:var(--amber-deep); border-color:var(--amber-deep); }
+  }
   .key.call.recall{ background:var(--amber); color:var(--amber-ink); border-color:var(--amber); }
   .key.call.flash{ animation:flash .5s var(--ease-out); }
-  @keyframes flash{ 0%{ box-shadow:0 0 0 0 rgba(255,255,255,.55);} 100%{ box-shadow:0 0 0 16px rgba(255,255,255,0);} }
+  @keyframes flash{ 0%{ box-shadow:0 0 0 0 rgba(23,17,14,.35);} 100%{ box-shadow:0 0 0 14px rgba(23,17,14,0);} }
 
   .footer{ margin-top:1.4rem; text-align:center; }
   .reset{
-    background:transparent; color:var(--red); border:1px solid rgba(227,6,19,.4);
+    background:transparent; color:var(--red-deep); border:1px solid rgba(227,6,19,.4);
     padding:.6rem 1.1rem; border-radius:10px; font-family:inherit; font-weight:500; font-size:.85rem; cursor:pointer;
+    transition: background .15s ease;
   }
-  .reset:hover{ background:rgba(227,6,19,.12); }
-  .hint{ color:var(--muted); font-weight:300; font-size:.82rem; margin-top:.9rem; line-height:1.55; }
-  .hint b{ font-weight:700; }
-  .setup-note{ background:rgba(227,6,19,.12); border:1px solid rgba(227,6,19,.45); color:#F3C9CC;
+  @media (hover:hover) and (pointer:fine){ .reset:hover{ background:rgba(227,6,19,.07); } }
+  .reset:focus-visible{ outline:3px solid var(--red); outline-offset:2px; }
+  .hint{ color:var(--muted); font-weight:400; font-size:.82rem; margin-top:.9rem; line-height:1.55; }
+  .hint b{ font-weight:700; color:var(--ink); }
+  .setup-note{ background:rgba(227,6,19,.06); border:1px solid rgba(227,6,19,.35); color:var(--red-deep);
     font-weight:500; padding:.9rem 1rem; border-radius:12px; font-size:.9rem; line-height:1.5; margin-bottom:1rem; display:none; }
 
   @media (prefers-reduced-motion: reduce){ .key:active{ transform:none; } .key.call.flash{ animation:none; } }
@@ -95,7 +110,7 @@
 <body>
 <div class="shell">
   <header>
-    <img class="logo" src="logo-light.svg" alt="G.A.T. CheckpointLX">
+    <img class="logo" src="logo.svg" alt="G.A.T. CheckpointLX">
     <h1>Controlo de senhas</h1>
     <span class="conn off" id="conn"><i></i><span id="connText">a ligar…</span></span>
   </header>
