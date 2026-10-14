@@ -236,12 +236,11 @@
       return card;
     }
     function renderGrid(){
-      var active = settings.rooms.filter(function(r){ return r.active; });
-      var tiles = [];
-      if (settings.showLogo) tiles.push({ logo:true });
-      active.forEach(function(r){ tiles.push(r); });
+      // tiles in the order of the list in Definições; the logo is one of them
+      var tiles = settings.rooms.filter(function(r){ return r.active; })
+                                .map(function(r){ return S.isLogo(r) ? { logo:true } : r; });
       grid.innerHTML = ''; cellsById = {};
-      if (!active.length){
+      if (!tiles.some(function(t){ return !t.logo; })){
         var p = document.createElement('div'); p.className = 'empty-note';
         p.textContent = 'Nenhum gabinete ativo';
         grid.appendChild(p);
@@ -272,13 +271,13 @@
     var resizeT;
     window.addEventListener('resize', function(){ clearTimeout(resizeT); resizeT = setTimeout(function(){ renderGrid(); refit(); }, 150); });
 
-    // ================= MEDIA (video or images) =================
+    // ================= MEDIA (playlist of videos and images) =================
     var stage = document.getElementById('stage');
     var media = document.getElementById('media');
     var vid = document.getElementById('vid');
     var layers = [document.getElementById('imgA'), document.getElementById('imgB')];
-    var mediaVisible = false, videoFailed = false;
-    var slideKey = '', slideList = [], slideTimer = null, activeLayer = -1, failedInRow = 0;
+    var mediaVisible = false;
+    var plKey = '', plList = [], plTimer = null, activeLayer = -1, failedInRow = 0;
 
     // size a picture to fit the box, centred horizontally and vertically
     function fit(el, nw, nh){
@@ -292,7 +291,7 @@
       el.style.top = Math.round((bh - h) / 2) + 'px';
     }
     function refit(){
-      if (vid.videoWidth) fit(vid, vid.videoWidth, vid.videoHeight);
+      if (vid.getAttribute('src') && vid.videoWidth) fit(vid, vid.videoWidth, vid.videoHeight);
       layers.forEach(function(l){ if (l.getAttribute('src') && l.naturalWidth) fit(l, l.naturalWidth, l.naturalHeight); });
     }
     function setMediaVisible(on){
@@ -302,69 +301,72 @@
       requestAnimationFrame(function(){ refit(); renderGrid(); });   // rooms take the freed space
     }
 
-    // --- video ---
-    vid.addEventListener('loadedmetadata', function(){ fit(vid, vid.videoWidth, vid.videoHeight); vid.classList.add('shown'); });
-    vid.addEventListener('error', function(){
-      if (!vid.getAttribute('src')) return;            // we emptied it on purpose
-      videoFailed = true; setMediaVisible(false);
-    });
-    function startVideo(file){
-      if (!file){ setMediaVisible(false); return; }
-      if (vid.getAttribute('src') !== file){
-        videoFailed = false; vid.classList.remove('shown');
-        vid.setAttribute('src', file);
-      }
-      if (videoFailed){ setMediaVisible(false); return; }
-      setMediaVisible(true);
-      var pr = vid.play(); if (pr && pr.catch) pr.catch(function(){});
-    }
-    function stopVideo(){
+    function clearVideo(){
+      vid.onloadedmetadata = vid.onended = vid.onerror = null;
       if (!vid.getAttribute('src')) return;
       vid.pause(); vid.classList.remove('shown');
       vid.removeAttribute('src'); vid.load();
     }
-
-    // --- images: one fixed image, or a crossfading slideshow ---
-    function stopSlides(){
-      clearTimeout(slideTimer); slideKey = ''; slideList = []; activeLayer = -1;
+    function hideImages(except){
+      layers.forEach(function(l){ if (l !== except) l.classList.remove('shown'); });
+    }
+    function stopPlaylist(){
+      clearTimeout(plTimer); plKey = ''; plList = []; activeLayer = -1;
+      clearVideo();
       layers.forEach(function(l){ l.onload = l.onerror = null; l.classList.remove('shown'); l.removeAttribute('src'); });
     }
-    function startSlides(list, secs){
-      var key = JSON.stringify(list) + '|' + secs;
-      if (key === slideKey) return;                    // already showing this set
-      stopSlides();
-      slideKey = key; slideList = list; failedInRow = 0;
+    function startPlaylist(list){
+      var key = JSON.stringify(list) + '|' + settings.video.seconds;
+      if (key === plKey) return;                          // already playing this list
+      stopPlaylist();
+      plKey = key; plList = list; failedInRow = 0;
       if (!list.length){ setMediaVisible(false); return; }
-      showSlide(0);
+      playItem(0);
     }
-    function showSlide(i){
-      var token = slideKey;
+    function nextItem(i){ playItem((i + 1) % plList.length); }
+    function itemFailed(i, token){
+      if (token !== plKey) return;
+      failedInRow++;
+      if (failedInRow >= plList.length){                  // nothing loads: hide, retry in 30 s
+        setMediaVisible(false);
+        plTimer = setTimeout(function(){ if (token === plKey){ failedInRow = 0; playItem(0); } }, 30000);
+        return;
+      }
+      nextItem(i);                                        // skip a missing/broken file
+    }
+    function playItem(i){
+      var token = plKey, src = S.url(plList[i]), many = plList.length > 1;
+      clearTimeout(plTimer);
+      if (S.isVideo(plList[i])){
+        clearVideo();
+        vid.loop = !many;                                 // a lone video loops; in a list it plays once
+        vid.onloadedmetadata = function(){
+          if (token !== plKey) return;
+          failedInRow = 0;
+          setMediaVisible(true);
+          fit(vid, vid.videoWidth, vid.videoHeight);
+          vid.classList.add('shown'); hideImages(null);
+          var pr = vid.play(); if (pr && pr.catch) pr.catch(function(){});
+        };
+        vid.onended = function(){ if (token === plKey && many) nextItem(i); };
+        vid.onerror = function(){ itemFailed(i, token); };
+        vid.setAttribute('src', src);
+        return;
+      }
       var next = layers[activeLayer === 0 ? 1 : 0];
       next.onload = function(){
-        if (token !== slideKey) return;
+        if (token !== plKey) return;
         failedInRow = 0;
         setMediaVisible(true);
         fit(next, next.naturalWidth, next.naturalHeight);
-        next.classList.add('shown');
-        if (activeLayer >= 0 && layers[activeLayer] !== next) layers[activeLayer].classList.remove('shown');
+        next.classList.add('shown'); hideImages(next);
         activeLayer = layers.indexOf(next);
-        if (slideList.length > 1){
-          slideTimer = setTimeout(function(){ showSlide((i + 1) % slideList.length); },
-                                  S.clamp(settings.video.seconds, 2, 600) * 1000);
-        }
+        clearVideo();
+        if (many) plTimer = setTimeout(function(){ nextItem(i); }, S.clamp(settings.video.seconds, 2, 600) * 1000);
       };
-      next.onerror = function(){
-        if (token !== slideKey) return;
-        failedInRow++;
-        if (failedInRow >= slideList.length){        // none of the files load: hide, retry in 30 s
-          setMediaVisible(false);
-          slideTimer = setTimeout(function(){ failedInRow = 0; showSlide(0); }, 30000);
-          return;
-        }
-        showSlide((i + 1) % slideList.length);       // skip a missing file
-      };
-      next.removeAttribute('src');                   // guarantees a fresh load event
-      next.src = slideList[i];
+      next.onerror = function(){ itemFailed(i, token); };
+      next.removeAttribute('src');                        // guarantees a fresh load event
+      next.src = src;
     }
 
     function applyMedia(){
@@ -373,9 +375,8 @@
       var side = S.isSide(v.position);
       media.style.height = side ? '' : S.clamp(v.size, 10, 70) + 'vh';
       media.style.width = side ? S.clamp(v.width, 10, 70) + 'vw' : '';
-      if (!v.on){ stopVideo(); stopSlides(); setMediaVisible(false); return; }
-      if (v.kind === 'images'){ stopVideo(); startSlides(v.images, v.seconds); }
-      else { stopSlides(); startVideo(v.file); }
+      var list = v.on ? v.playlist.filter(function(x){ return x.on && S.isMedia(x.file); }).map(function(x){ return x.file; }) : [];
+      startPlaylist(list);
       requestAnimationFrame(refit);
     }
 
@@ -553,7 +554,7 @@
     function clearAllNumbers(){
       var ids = {};
       Object.keys(queueData).forEach(function(id){ ids[id] = 1; });
-      settings.rooms.forEach(function(r){ ids[r.id] = 1; });
+      S.realRooms(settings).forEach(function(r){ ids[r.id] = 1; });
       Object.keys(ids).forEach(function(id){
         if (S.entryN(queueData[id])) db.ref('queue/' + id + '/n').set(0);
       });

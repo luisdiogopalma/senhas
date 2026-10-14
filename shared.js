@@ -14,9 +14,10 @@
   S.defaults = function(){
     var rooms = (typeof ROOMS !== 'undefined' && Array.isArray(ROOMS) && ROOMS.length) ? ROOMS : ['Gabinete 1'];
     return {
-      rooms: rooms.map(function(name, i){ return { id: String(i), name: String(name), active: true }; }),
+      // the logo is a row in the same list, so it can sit anywhere in the grid
+      rooms: [{ id: 'logo', name: 'Logótipo', active: true }].concat(
+             rooms.map(function(name, i){ return { id: String(i), name: String(name), active: true }; })),
       grid: { mode: 'auto', cols: 4 },
-      showLogo: true,
       // media area: a playlist of videos and images from the media/ folder.
       // Each item: { file: 'media/x.jpg', on: true|false }. video.mp4 at the top
       // level is kept from the first version so an existing setup keeps playing.
@@ -73,10 +74,16 @@
           };
         })
       : d.rooms;
+    // exactly one logo row; older settings without it get one at the top (honouring the old on/off switch)
+    var logoSeen = false;
+    out.rooms = out.rooms.filter(function(r){ if (r.id !== 'logo') return true; if (logoSeen) return false; logoSeen = true; return true; });
+    if (!logoSeen) out.rooms.unshift({ id: 'logo', name: 'Logótipo', nameEn: '', active: saved.showLogo !== false });
     return out;
   };
 
   /* ---------- small helpers ---------- */
+  S.isLogo = function(r){ return !!r && r.id === 'logo'; };
+  S.realRooms = function(settings){ return settings.rooms.filter(function(r){ return r.id !== 'logo'; }); };
   S.roomEn = function(name){ return String(name).replace(/^Gabinete\s+/i, 'Room '); };
   /* What the English voice says for a room: its English name if set, otherwise
      "Gabinete 3" -> "Room 3". The screen always shows the normal name. */

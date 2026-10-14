@@ -255,7 +255,7 @@
   var latest = {};
 
   function roomById(id){ for (var i=0;i<settings.rooms.length;i++){ if (settings.rooms[i].id === id) return settings.rooms[i]; } return null; }
-  function activeRooms(){ return settings.rooms.filter(function(r){ return r.active; }); }
+  function activeRooms(){ return S.realRooms(settings).filter(function(r){ return r.active; }); }
 
   // ---- remembering this device's room ----
   function save(id){ try{ localStorage.setItem('senha-gabinete-id', id); }catch(e){} }
@@ -264,7 +264,8 @@
       var v = localStorage.getItem('senha-gabinete-id');
       if (v !== null) return v;
       var old = localStorage.getItem('senha-gabinete');           // older version stored a position
-      if (old !== null && settings.rooms[parseInt(old,10)]) return settings.rooms[parseInt(old,10)].id;
+      var real = S.realRooms(settings);
+      if (old !== null && real[parseInt(old,10)]) return real[parseInt(old,10)].id;
     }catch(e){}
     return null;
   }
@@ -273,7 +274,8 @@
     if (!h) return null;
     if (h.indexOf('g=') === 0) return decodeURIComponent(h.slice(2));
     var n = parseInt(h, 10);                                      // older links: #3 = third room
-    return (!isNaN(n) && settings.rooms[n-1]) ? settings.rooms[n-1].id : null;
+    var real = S.realRooms(settings);
+    return (!isNaN(n) && real[n-1]) ? real[n-1].id : null;
   }
 
   // ---- room chips ----
@@ -290,7 +292,7 @@
   }
   function selectRoom(id){
     var r = roomById(id);
-    if (!r || !r.active){ deselect(); return; }
+    if (!r || !r.active || S.isLogo(r)){ deselect(); return; }
     selected = id; save(id);
     if (history.replaceState) history.replaceState(null, '', '#g=' + encodeURIComponent(id));
     Object.keys(chips).forEach(function(k){ chips[k].classList.toggle('active', k === id); });
@@ -425,7 +427,7 @@
     if (!confirm('Repor TODAS as senhas a zero? Isto limpa o ecrã da sala de espera.')) return;
     var ids = {};
     Object.keys(latest).forEach(function(id){ ids[id] = 1; });
-    settings.rooms.forEach(function(r){ ids[r.id] = 1; });
+    S.realRooms(settings).forEach(function(r){ ids[r.id] = 1; });
     Object.keys(ids).forEach(function(id){ db.ref('queue/' + id + '/n').set(0); });
   });
 

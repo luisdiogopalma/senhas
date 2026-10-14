@@ -150,11 +150,14 @@
   <div class="step">
     <div class="num">4</div>
     <div class="body">
-      <h2>Add your video</h2>
-      <p>Rename your video to exactly <code>video.mp4</code> and keep it in the same folder.</p>
+      <h2>Add your videos and images</h2>
+      <p>Put them in a folder called <code>media</code>, next to the pages. Any name works — <code>cartaz-prep.jpg</code>, <code>video-vacinas.mp4</code>. Then open <b>settings.html</b> (password <b>6969</b>): the files appear on their own, switched off. Switch on the ones to show and put them in order.</p>
       <ul>
-        <li>No video yet? Fine — the screen shows the numbers full-size until you add one.</li>
-        <li>Over ~90 MB and hosting online? Shrink it with <a href="https://handbrake.fr" target="_blank" rel="noopener">HandBrake</a> (free), or use the local option in Step 5.</li>
+        <li>On GitHub: <b>Add file → Upload files</b>, and drag the whole <code>media</code> folder in (or open the folder and drag files into it).</li>
+        <li>Videos: <code>.mp4</code> (or <code>.webm</code>). Images: <code>.jpg</code>, <code>.png</code>, <code>.webp</code>.</li>
+        <li>The GitHub website accepts files up to <b>25 MB</b>. Shrink bigger videos with <a href="https://handbrake.fr" target="_blank" rel="noopener">HandBrake</a> (free).</li>
+        <li>Nothing switched on? The screen just shows the rooms full-size.</li>
+        <li>Using your own web address instead of <code>…github.io</code>? Add this line to <code>config.js</code> so the settings page knows where to look: <code>const MEDIA_REPO = "your-github-name/your-repository";</code></li>
       </ul>
     </div>
   </div>

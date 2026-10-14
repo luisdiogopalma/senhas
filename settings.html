@@ -23,7 +23,6 @@
   body{
     background:var(--paper); color:var(--ink); font-family:"DIN", system-ui, sans-serif;
     min-height:100vh; padding: max(1rem, env(safe-area-inset-top)) 1rem 4rem; line-height:1.45;
-    letter-spacing:-0.015em;      /* DIN is spaced for signage; tighten it for reading text */
     font-kerning:normal;
   }
   .shell{ max-width:720px; margin:0 auto; }
@@ -54,7 +53,7 @@
   .field.disabled{ opacity:.45; pointer-events:none; }
 
   input[type=text], input[type=password], input[type=number], select, textarea{
-    font-family:inherit; font-size:1rem; color:var(--ink); background:var(--surface-2); letter-spacing:-0.01em;
+    font-family:inherit; font-size:1rem; color:var(--ink); background:var(--surface-2);
     border:1px solid var(--line-strong); border-radius:10px; padding:.6rem .75rem; width:100%;
   }
   input:focus, select:focus, textarea:focus{ outline:3px solid rgba(227,6,19,.28); outline-offset:1px; border-color:var(--red); }
@@ -99,6 +98,9 @@
   .room input[type=text]{ flex:1 1 0; min-width:0; background:var(--surface); }
   .room input.en{ color:var(--muted); }
   .room input.en::placeholder{ color:var(--placeholder); font-style:italic; }
+  .room.logo-row .logo-cell{ flex:2 1 0; min-width:0; display:flex; align-items:center; gap:.6rem; padding:.2rem .1rem; font-weight:700; }
+  .room.logo-row .logo-cell img{ height:2.1rem; width:auto; }
+  .icon-spacer{ width:2.2rem; flex:0 0 auto; }
   .room-head{ display:flex; gap:.5rem; padding:0 .5rem .3rem calc(.5rem + 2 * 2.2rem + 1rem); font-size:.75rem;
     font-weight:700; text-transform:uppercase; letter-spacing:.06em; color:var(--muted); }
   .room-head span{ flex:1 1 0; }
@@ -229,7 +231,7 @@
 
     <section>
       <h2>Gabinetes</h2>
-      <p class="desc">Os gabinetes desligados desaparecem do ecrã e da página de controlo, mas não são apagados.
+      <p class="desc">A ordem desta lista é a ordem no ecrã — o <b>logótipo</b> também está aqui: suba-o, desça-o ou desligue-o. Os gabinetes desligados desaparecem do ecrã e da página de controlo, mas não são apagados.
         O <b>nome em inglês</b> é opcional e só é usado pela voz em inglês — o ecrã mostra sempre o nome normal. Se ficar vazio, a voz diz o que aparece a cinzento (ex.: "Gabinete 3" → "Room 3").</p>
       <div class="room-head"><span>Nome no ecrã</span><span>Dito em inglês</span></div>
       <div class="room-list" id="roomList"></div>
@@ -254,10 +256,6 @@
         <select id="gridCols" style="width:6.5rem">
           <option>1</option><option>2</option><option>3</option><option>4</option><option>5</option><option>6</option>
         </select>
-      </div>
-      <div class="field">
-        <span class="lbl">Mostrar o logótipo<small>Desligado, o primeiro gabinete ocupa o lugar dele</small></span>
-        <label class="switch"><input type="checkbox" id="showLogo"><span></span></label>
       </div>
       <div class="field stack">
         <span class="lbl">Pré-visualização</span>
@@ -496,6 +494,27 @@
       down.disabled = i === cfg.rooms.length - 1;
       down.addEventListener('click', function(){ move(idx(id), 1); });
 
+      if (S.isLogo(r)){
+        row.classList.add('logo-row');
+        var lg = document.createElement('div'); lg.className = 'logo-cell';
+        var li = document.createElement('img'); li.src = 'logo.svg'; li.alt = '';
+        var lt = document.createElement('span'); lt.textContent = 'Logótipo';
+        lg.appendChild(li); lg.appendChild(lt);
+        var lsw = document.createElement('label'); lsw.className = 'switch'; lsw.title = r.active ? 'A mostrar' : 'Desligado';
+        var lcb = document.createElement('input'); lcb.type = 'checkbox'; lcb.checked = r.active;
+        lcb.setAttribute('aria-label', 'Mostrar o logótipo');
+        lcb.addEventListener('change', function(){
+          var k = idx(id); if (k < 0) return;
+          cfg.rooms[k].active = lcb.checked; row.classList.toggle('off', !lcb.checked);
+          saveRooms(); renderPreview();
+        });
+        lsw.appendChild(lcb); lsw.appendChild(document.createElement('span'));
+        var spacer = document.createElement('span'); spacer.className = 'icon-spacer';
+        row.appendChild(up); row.appendChild(down); row.appendChild(lg); row.appendChild(lsw); row.appendChild(spacer);
+        list.appendChild(row);
+        return;
+      }
+
       var name = document.createElement('input'); name.type = 'text'; name.value = r.name; name.maxLength = 40;
       name.setAttribute('aria-label', 'Nome do gabinete');
       var en = document.createElement('input'); en.type = 'text'; en.className = 'en'; en.value = r.nameEn || '';
@@ -526,9 +545,9 @@
       sw.appendChild(cb); sw.appendChild(document.createElement('span'));
 
       var del = document.createElement('button'); del.className = 'icon-btn del'; del.textContent = '✕'; del.title = 'Apagar gabinete';
-      del.disabled = cfg.rooms.length <= 1;
+      del.disabled = S.realRooms(cfg).length <= 1;
       del.addEventListener('click', function(){
-        var k = idx(id); if (k < 0 || cfg.rooms.length <= 1) return;
+        var k = idx(id); if (k < 0 || S.realRooms(cfg).length <= 1) return;
         if (!confirm('Apagar "' + cfg.rooms[k].name + '"? Para o esconder apenas, use o interruptor.')) return;
         cfg.rooms.splice(k, 1);
         saveRooms();
@@ -547,7 +566,7 @@
     saveRooms(); renderRooms(); renderPreview();
   }
   function addRoom(){
-    var v = $('newRoom').value.trim() || ('Gabinete ' + (cfg.rooms.length + 1));
+    var v = $('newRoom').value.trim() || ('Gabinete ' + (S.realRooms(cfg).length + 1));
     cfg.rooms.push({ id: 'g' + Date.now().toString(36), name: v, active: true });
     $('newRoom').value = '';
     saveRooms(); renderRooms(); renderPreview();
@@ -575,8 +594,7 @@
       st.appendChild(m);
     }
     var tiles = [];
-    if (cfg.showLogo) tiles.push({ logo:true, name:'GAT' });
-    cfg.rooms.forEach(function(r){ if (r.active) tiles.push(r); });
+    cfg.rooms.forEach(function(r){ if (r.active) tiles.push(S.isLogo(r) ? { logo:true, name:'GAT' } : r); });
     if (!tiles.length) return;
     // measure after layout so auto mode matches the real screen's proportions
     requestAnimationFrame(function(){
@@ -613,7 +631,6 @@
     b.addEventListener('click', function(){ cfg.grid.mode = b.dataset.v; put('grid/mode', cfg.grid.mode); renderAll(); });
   });
   $('gridCols').addEventListener('change', function(){ cfg.grid.cols = parseInt($('gridCols').value, 10); put('grid/cols', cfg.grid.cols); renderPreview(); });
-  bindSwitch('showLogo', 'showLogo');
 
   // ---------- media (playlist from the media/ folder) ----------
   bindSwitch('mediaOn', 'video/on');
@@ -815,7 +832,7 @@
   $('voiceVol').addEventListener('change', function(){ cfg.voice.volume = (+$('voiceVol').value) / 100; put('voice/volume', cfg.voice.volume); });
   function sendTest(lang){
     if (!db) return;
-    var first = cfg.rooms.filter(function(r){ return r.active; })[0];
+    var first = S.realRooms(cfg).filter(function(r){ return r.active; })[0];
     var text = lang === 'en' ? S.fill(cfg.text.en, 12, S.roomSpokenEn(first || { name:'Gabinete 1' }))
                              : S.fill(cfg.text.pt, 12, first ? first.name : 'Gabinete 1');
     db.ref('message').set({ text: text, lang: lang, id: Date.now().toString(36) + 't', at: firebase.database.ServerValue.TIMESTAMP })
@@ -855,7 +872,7 @@
     if (!db || !confirm('Limpar todas as senhas do ecrã agora?')) return;
     var ids = {};
     Object.keys(queueData).forEach(function(id){ ids[id] = 1; });
-    cfg.rooms.forEach(function(r){ ids[r.id] = 1; });
+    S.realRooms(cfg).forEach(function(r){ ids[r.id] = 1; });
     Promise.all(Object.keys(ids).map(function(id){ return db.ref('queue/' + id + '/n').set(0); }))
       .then(function(){ flash('Ecrã limpo'); }).catch(fail);
   });
@@ -913,7 +930,6 @@
     $('gridSeg').querySelectorAll('button').forEach(function(b){ b.classList.toggle('on', b.dataset.v === cfg.grid.mode); });
     setIfIdle($('gridCols'), 'value', String(S.clamp(cfg.grid.cols, 1, 6)));
     $('colsField').classList.toggle('disabled', cfg.grid.mode !== 'fixed');
-    $('showLogo').checked = !!cfg.showLogo;
 
     var v = cfg.video, side = S.isSide(v.position);
     $('mediaOn').checked = !!v.on;
