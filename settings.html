@@ -23,6 +23,8 @@
   body{
     background:var(--paper); color:var(--ink); font-family:"DIN", system-ui, sans-serif;
     min-height:100vh; padding: max(1rem, env(safe-area-inset-top)) 1rem 4rem; line-height:1.45;
+    letter-spacing:-0.015em;      /* DIN is spaced for signage; tighten it for reading text */
+    font-kerning:normal;
   }
   .shell{ max-width:720px; margin:0 auto; }
   header{ display:flex; align-items:center; gap:.75rem; padding:1rem .1rem; border-bottom:3px solid var(--red); margin-bottom:1.4rem; }
@@ -52,7 +54,7 @@
   .field.disabled{ opacity:.45; pointer-events:none; }
 
   input[type=text], input[type=password], input[type=number], select, textarea{
-    font-family:inherit; font-size:1rem; color:var(--ink); background:var(--surface-2);
+    font-family:inherit; font-size:1rem; color:var(--ink); background:var(--surface-2); letter-spacing:-0.01em;
     border:1px solid var(--line-strong); border-radius:10px; padding:.6rem .75rem; width:100%;
   }
   input:focus, select:focus, textarea:focus{ outline:3px solid rgba(227,6,19,.28); outline-offset:1px; border-color:var(--red); }
@@ -128,6 +130,24 @@
     font-size:clamp(8px, 1.5vw, 11px); font-weight:700; color:var(--muted); }
   .preview .pv img{ max-width:100%; max-height:100%; object-fit:contain; border-radius:3px; }
 
+  .files-head{ display:flex; align-items:center; justify-content:space-between; gap:1rem; }
+  .files-status{ font-size:.84rem; color:var(--muted); }
+  .files-status.warn{ color:var(--red-deep); background:rgba(227,6,19,.06); border:1px solid rgba(227,6,19,.3);
+    border-radius:10px; padding:.6rem .75rem; }
+  .file-list{ display:grid; gap:.45rem; }
+  .file{ display:flex; align-items:center; gap:.55rem; padding:.45rem .5rem; border:1px solid var(--line); border-radius:12px; background:var(--surface-2); }
+  .file.off{ opacity:.55; }
+  .file .tb{ width:76px; height:46px; flex:0 0 auto; border-radius:7px; background:#EFE8DF; overflow:hidden;
+    display:flex; align-items:center; justify-content:center; position:relative; }
+  .file .tb img, .file .tb video{ max-width:100%; max-height:100%; object-fit:contain; display:block; }
+  .file .tb .play{ position:absolute; inset:auto auto 3px 4px; font-size:.62rem; font-weight:700; color:#fff;
+    background:rgba(23,17,14,.7); border-radius:4px; padding:0 .3rem; }
+  .file .info{ flex:1 1 auto; min-width:0; }
+  .file .nm{ font-weight:500; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .file .meta{ font-size:.76rem; color:var(--muted); }
+  .file.bad .tb{ background:rgba(227,6,19,.08); }
+  .file.bad .meta{ color:var(--red-deep); font-weight:700; }
+  .file-empty{ font-size:.88rem; color:var(--muted); padding:.8rem; border:1px dashed var(--line-strong); border-radius:12px; text-align:center; }
   .thumbs{ display:flex; flex-wrap:wrap; gap:.45rem; }
   .thumb{ width:84px; text-align:center; font-size:.68rem; color:var(--muted); }
   .thumb .box{ width:84px; height:56px; border:1px solid var(--line); border-radius:8px; background:var(--surface-2);
@@ -247,29 +267,22 @@
 
     <section>
       <h2>Vídeo e imagens</h2>
-      <p class="desc">Uma área ao lado dos gabinetes com um vídeo em loop (sem som) ou imagens. A imagem fica sempre centrada na área; o espaço que sobra fica com a cor de fundo.</p>
+      <p class="desc">Carregue vídeos e imagens para a pasta <code>media</code> do site — aparecem aqui sozinhos. Ligue os que quer mostrar e ordene-os com as setas.
+        Passam um a um: cada imagem fica os segundos que escolher, cada vídeo passa até ao fim. Um único ficheiro fica fixo (um vídeo sozinho repete).</p>
       <div class="field">
-        <span class="lbl">Mostrar</span>
+        <span class="lbl">Mostrar vídeo e imagens</span>
         <label class="switch"><input type="checkbox" id="mediaOn"><span></span></label>
       </div>
-      <div class="field media-dep">
-        <span class="lbl">Tipo</span>
-        <div class="seg" id="mediaKind">
-          <button data-v="video">Vídeo</button>
-          <button data-v="images">Imagens</button>
+      <div class="field stack media-dep">
+        <div class="files-head">
+          <span class="lbl">Ficheiros</span>
+          <button class="btn quiet" id="refreshMedia">↻ Atualizar</button>
         </div>
-      </div>
-      <div class="field stack media-dep" id="videoFileField">
-        <span class="lbl">Ficheiro de vídeo<small>Na mesma pasta que as páginas, ex.: <code>video.mp4</code></small></span>
-        <input type="text" id="videoFile" placeholder="video.mp4">
-      </div>
-      <div class="field stack media-dep" id="imagesField">
-        <span class="lbl">Imagens<small>Um ficheiro por linha, na mesma pasta que as páginas (ex.: <code>cartaz1.jpg</code>). Uma imagem fica fixa; várias passam em sequência.</small></span>
-        <textarea id="mediaImages" placeholder="cartaz1.jpg&#10;cartaz2.png"></textarea>
-        <div class="thumbs" id="thumbs"></div>
+        <div class="files-status" id="filesStatus"></div>
+        <div class="file-list" id="fileList"></div>
       </div>
       <div class="field media-dep" id="secondsField">
-        <span class="lbl">Segundos por imagem<small>Só se aplica com 2 ou mais imagens</small></span>
+        <span class="lbl">Segundos por imagem<small>Os vídeos passam sempre até ao fim</small></span>
         <input type="number" id="mediaSeconds" min="2" max="600" step="1">
       </div>
       <div class="field media-dep">
@@ -455,6 +468,7 @@
     try{ sessionStorage.setItem('senhas-settings-ok', PW_HASH); }catch(e){}
     $('gate').hidden = true; $('app').hidden = false;
     renderAll(true);
+    detect();
   }
   $('loginForm').addEventListener('submit', function(e){
     e.preventDefault();
@@ -548,14 +562,14 @@
     var head = document.createElement('div'); head.className = 'ph'; pv.appendChild(head);
     var st = document.createElement('div'); st.className = 'pstage'; st.dataset.pos = cfg.video.position; pv.appendChild(st);
     var g = document.createElement('div'); g.className = 'pg'; st.appendChild(g);
-    var showMedia = cfg.video.on && (cfg.video.kind === 'video' ? !!cfg.video.file : cfg.video.images.length > 0);
-    if (showMedia){
+    var f0 = cfg.video.on ? firstOn() : null;
+    if (f0){
       var m = document.createElement('div'); m.className = 'pv';
       if (S.isSide(cfg.video.position)) m.style.width = S.clamp(cfg.video.width, 10, 70) + '%';
       else m.style.height = S.clamp(cfg.video.size, 10, 70) + '%';
-      if (cfg.video.kind === 'images'){
-        var im = document.createElement('img'); im.src = cfg.video.images[0]; im.alt = '';
-        im.onerror = function(){ m.textContent = 'Imagens'; };
+      if (S.isImage(f0.file)){
+        var im = document.createElement('img'); im.src = S.url(f0.file); im.alt = '';
+        im.onerror = function(){ m.textContent = 'Imagem'; };
         m.appendChild(im);
       } else m.textContent = '▶ Vídeo';
       st.appendChild(m);
@@ -601,18 +615,10 @@
   $('gridCols').addEventListener('change', function(){ cfg.grid.cols = parseInt($('gridCols').value, 10); put('grid/cols', cfg.grid.cols); renderPreview(); });
   bindSwitch('showLogo', 'showLogo');
 
-  // media (video or images)
+  // ---------- media (playlist from the media/ folder) ----------
   bindSwitch('mediaOn', 'video/on');
-  $('mediaKind').querySelectorAll('button').forEach(function(b){
-    b.addEventListener('click', function(){ cfg.video.kind = b.dataset.v; put('video/kind', cfg.video.kind); renderAll(); });
-  });
   $('mediaPos').querySelectorAll('button').forEach(function(b){
     b.addEventListener('click', function(){ cfg.video.position = b.dataset.v; put('video/position', cfg.video.position); renderAll(); });
-  });
-  $('videoFile').addEventListener('change', function(){ cfg.video.file = $('videoFile').value.trim() || 'video.mp4'; $('videoFile').value = cfg.video.file; put('video/file', cfg.video.file); renderPreview(); });
-  $('mediaImages').addEventListener('change', function(){
-    cfg.video.images = $('mediaImages').value.split(/\r?\n/).map(function(x){ return x.trim(); }).filter(Boolean);
-    put('video/images', cfg.video.images); renderThumbs(); renderPreview(); renderSizeHint();
   });
   $('mediaSeconds').addEventListener('change', function(){
     var v = Math.round(S.clamp($('mediaSeconds').value, 2, 600));
@@ -628,46 +634,174 @@
     var k = sizeKey(); cfg.video[k] = +$('mediaSize').value; put('video/' + k, cfg.video[k]); renderPreview();
   });
 
-  // thumbnails: shows whether each file in the list is actually found
-  var imgDims = {};   // src -> { w, h } once loaded
-  function renderThumbs(){
-    var box = $('thumbs'); box.innerHTML = '';
-    cfg.video.images.forEach(function(src){
-      var t = document.createElement('div'); t.className = 'thumb';
-      var b = document.createElement('div'); b.className = 'box';
+  var detected = null;        // [{ file, size }] from the folder, or null if not known
+  var detectState = { st:'idle' };
+  var dims = {};              // file -> { w, h, dur } once its thumbnail loads
+  var thumbState = {};        // file -> 'ok' | 'bad'
+  var thumbs = {};            // file -> cached thumbnail element
+
+  function fmtSize(b){ if (!b && b !== 0) return ''; return b >= 1048576 ? (b / 1048576).toFixed(1).replace('.', ',') + ' MB' : Math.max(1, Math.round(b / 1024)) + ' KB'; }
+  function fmtDur(s){ s = Math.round(s || 0); return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0'); }
+  // missing = its thumbnail failed, or the folder was read and the file isn't in it
+  function isMissing(file){
+    if (thumbState[file] === 'bad') return true;
+    if (detected && file.indexOf(S.MEDIA_FOLDER + '/') === 0){
+      for (var i = 0; i < detected.length; i++){ if (detected[i].file === file) return false; }
+      return true;
+    }
+    return false;
+  }
+  function sizeOf(file){ if (!detected) return null; for (var i = 0; i < detected.length; i++){ if (detected[i].file === file) return detected[i].size; } return null; }
+
+  // saved playlist first (keeps your order), then any new files found in the folder, switched off
+  function mergedList(){
+    var list = cfg.video.playlist.map(function(x){ return { file:x.file, on:!!x.on }; });
+    if (detected){
+      var have = {}; list.forEach(function(x){ have[x.file] = 1; });
+      detected.forEach(function(f){ if (!have[f.file]) list.push({ file:f.file, on:false }); });
+    }
+    return list;
+  }
+  function savePlaylist(list){
+    cfg.video.playlist = list.map(function(x){ return { file:x.file, on:!!x.on }; });
+    put('video/playlist', cfg.video.playlist);
+    renderFiles(); renderPreview(); renderSizeHint();
+  }
+
+  function thumbFor(file){
+    if (thumbs[file]) return thumbs[file];
+    var box = document.createElement('div'); box.className = 'tb';
+    var src = S.url(file);
+    if (S.isVideo(file)){
+      var v = document.createElement('video'); v.muted = true; v.preload = 'metadata'; v.playsInline = true;
+      v.onloadedmetadata = function(){ dims[file] = { w:v.videoWidth, h:v.videoHeight, dur:v.duration }; thumbState[file] = 'ok'; renderFiles(); renderSizeHint(); renderPreview(); };
+      v.onerror = function(){ thumbState[file] = 'bad'; renderFiles(); };
+      v.src = src + '#t=0.5';
+      box.appendChild(v);
+      var tag = document.createElement('span'); tag.className = 'play'; tag.textContent = '▶'; box.appendChild(tag);
+    } else {
       var im = document.createElement('img'); im.alt = '';
-      im.onload = function(){ imgDims[src] = { w: im.naturalWidth, h: im.naturalHeight }; renderSizeHint(); };
-      im.onerror = function(){ t.classList.add('bad'); b.textContent = 'não encontrado'; };
+      im.onload = function(){ dims[file] = { w:im.naturalWidth, h:im.naturalHeight }; thumbState[file] = 'ok'; renderFiles(); renderSizeHint(); renderPreview(); };
+      im.onerror = function(){ thumbState[file] = 'bad'; renderFiles(); };
       im.src = src;
-      b.appendChild(im);
-      var n = document.createElement('span'); n.className = 'nm'; n.textContent = src; n.title = src;
-      t.appendChild(b); t.appendChild(n); box.appendChild(t);
+      box.appendChild(im);
+    }
+    thumbs[file] = box;
+    return box;
+  }
+
+  function renderFiles(){
+    var listEl = $('fileList');
+    var list = mergedList();
+    listEl.innerHTML = '';
+    if (!list.length){
+      var e = document.createElement('div'); e.className = 'file-empty';
+      e.textContent = 'Ainda não há vídeos nem imagens na pasta media.';
+      listEl.appendChild(e); return;
+    }
+    list.forEach(function(item, i){
+      var file = item.file, bad = isMissing(file);
+      var row = document.createElement('div');
+      row.className = 'file' + (item.on ? '' : ' off') + (bad ? ' bad' : '');
+
+      var up = document.createElement('button'); up.className = 'icon-btn'; up.textContent = '↑'; up.title = 'Subir'; up.disabled = i === 0;
+      up.addEventListener('click', function(){ var l = mergedList(); var t2 = l[i - 1]; l[i - 1] = l[i]; l[i] = t2; savePlaylist(l); });
+      var down = document.createElement('button'); down.className = 'icon-btn'; down.textContent = '↓'; down.title = 'Descer'; down.disabled = i === list.length - 1;
+      down.addEventListener('click', function(){ var l = mergedList(); var t2 = l[i + 1]; l[i + 1] = l[i]; l[i] = t2; savePlaylist(l); });
+
+      var info = document.createElement('div'); info.className = 'info';
+      var nm = document.createElement('div'); nm.className = 'nm'; nm.textContent = S.baseName(file); nm.title = file;
+      var meta = document.createElement('div'); meta.className = 'meta';
+      if (bad) meta.textContent = 'Não encontrado — apague da lista ou volte a carregar o ficheiro';
+      else {
+        var parts = [S.isVideo(file) ? 'Vídeo' : 'Imagem'];
+        var dm = dims[file];
+        if (dm && dm.w) parts.push(dm.w + '×' + dm.h);
+        if (dm && dm.dur && isFinite(dm.dur)) parts.push(fmtDur(dm.dur));
+        var sz = fmtSize(sizeOf(file)); if (sz) parts.push(sz);
+        if (file.indexOf(S.MEDIA_FOLDER + '/') !== 0) parts.push('fora da pasta media');
+        meta.textContent = parts.join(' · ');
+      }
+      info.appendChild(nm); info.appendChild(meta);
+
+      var sw = document.createElement('label'); sw.className = 'switch'; sw.title = item.on ? 'A mostrar' : 'Desligado';
+      var cb = document.createElement('input'); cb.type = 'checkbox'; cb.checked = item.on; cb.setAttribute('aria-label', 'Mostrar ' + S.baseName(file));
+      cb.addEventListener('change', function(){ var l = mergedList(); l[i].on = cb.checked; savePlaylist(l); });
+      sw.appendChild(cb); sw.appendChild(document.createElement('span'));
+
+      row.appendChild(up); row.appendChild(down); row.appendChild(thumbFor(file)); row.appendChild(info); row.appendChild(sw);
+      if (bad){
+        var del = document.createElement('button'); del.className = 'icon-btn del'; del.textContent = '✕'; del.title = 'Tirar da lista';
+        del.addEventListener('click', function(){ var l = mergedList(); l.splice(i, 1); delete thumbs[file]; delete thumbState[file]; savePlaylist(l); });
+        row.appendChild(del);
+      }
+      listEl.appendChild(row);
     });
+  }
+
+  function renderFilesStatus(){
+    var el = $('filesStatus'), s = detectState, folder = S.MEDIA_FOLDER;
+    el.classList.toggle('warn', s.st === 'err');
+    if (s.st === 'loading'){ el.textContent = 'A procurar ficheiros na pasta ' + folder + '…'; return; }
+    if (s.st === 'ok'){
+      var n = detected.length, hh = new Date();
+      el.textContent = n + (n === 1 ? ' ficheiro' : ' ficheiros') + ' na pasta ' + folder
+        + (s.repo ? ' (GitHub: ' + s.repo + ')' : '') + ' · atualizado às '
+        + String(hh.getHours()).padStart(2, '0') + ':' + String(hh.getMinutes()).padStart(2, '0');
+      return;
+    }
+    if (s.st === 'err'){
+      var why = {
+        nofolder: 'Ainda não existe a pasta ' + folder + (s.repo ? ' no repositório ' + s.repo : '') + '. No GitHub, em Add file → Upload files, arraste uma pasta chamada ' + folder + ' com os ficheiros lá dentro.',
+        ratelimit: 'O GitHub limita as consultas a 60 por hora. Tente daqui a pouco — o ecrã continua a funcionar normalmente.',
+        network: 'Não foi possível ver a pasta ' + folder + '. A lista abaixo é a que está guardada.',
+        http: 'Não foi possível ver a pasta ' + folder + ' (erro ' + (s.status || '?') + '). A lista abaixo é a que está guardada.'
+      }[s.reason] || 'Não foi possível ver a pasta.';
+      el.textContent = why;
+      return;
+    }
+    el.textContent = '';
+  }
+  function detect(){
+    detectState = { st:'loading' }; renderFilesStatus();
+    S.detectMedia().then(function(res){
+      detected = res.files; detectState = { st:'ok', repo:res.repo };
+      renderFilesStatus(); renderFiles(); renderPreview(); renderSizeHint();
+    }, function(err){
+      detected = null; detectState = { st:'err', reason:err.reason, status:err.status, repo:err.repo || S.githubRepo() };
+      renderFilesStatus(); renderFiles();
+    });
+  }
+  $('refreshMedia').addEventListener('click', function(){
+    thumbs = {}; thumbState = {}; dims = {};     // re-check every file from scratch
+    detect();
+  });
+
+  // first switched-on file whose size is known, for the size hint and preview
+  function firstOn(){
+    var l = mergedList().filter(function(x){ return x.on && !isMissing(x.file); });
+    return l[0] || null;
   }
 
   // pixel guidance for HD and Full HD screens
   function renderSizeHint(){
-    var v = cfg.video, side = S.isSide(v.position);
+    var v = cfg.video;
     var hd = S.mediaBox(cfg, 1280, 720), fhd = S.mediaBox(cfg, 1920, 1080);
     var ratio = fhd.w / fhd.h;
     var ratioTxt = ratio >= 1 ? ratio.toFixed(1).replace('.', ',') + ' : 1' : '1 : ' + (1 / ratio).toFixed(1).replace('.', ',');
     var html = 'Tamanho da área (aprox.):'
       + '<div class="k"><span>HD 1280×720</span><b>' + hd.w + ' × ' + hd.h + ' px</b>'
       + '<span>Full HD 1920×1080</span><b>' + fhd.w + ' × ' + fhd.h + ' px</b></div>'
-      + 'Para ocupar a área toda, use ' + (v.kind === 'images' ? 'imagens' : 'um vídeo') + ' com proporção ≈ <b>' + ratioTxt + '</b> '
+      + 'Para ocupar a área toda, use imagens ou vídeos com proporção ≈ <b>' + ratioTxt + '</b> '
       + '(ex.: <b>' + fhd.w + ' × ' + fhd.h + ' px</b>).';
-    // what the actual content will look like
-    var sample = null, label = '';
-    if (v.kind === 'video'){ sample = { w:16, h:9 }; label = 'Um vídeo 16:9'; }
-    else {
-      var first = v.images.filter(function(x){ return imgDims[x]; })[0];
-      if (first){ sample = imgDims[first]; label = 'A imagem <b>' + first.replace(/</g, '&lt;') + '</b> (' + sample.w + '×' + sample.h + ')'; }
-    }
-    if (sample){
-      var f = S.fitInside(sample.w, sample.h, fhd.w, fhd.h);
-      html += '<br>' + label + ' aparece com <b>' + f.w + ' × ' + f.h + ' px</b> em Full HD';
-      html += (f.w >= fhd.w - 4 && f.h >= fhd.h - 4) ? ' — ocupa a área toda.' : ', centrada, com margem ' + (f.w < fhd.w - 4 ? 'dos lados.' : 'em cima e em baixo.');
-    }
+    var f0 = firstOn(), sample = null, label = '';
+    if (f0 && dims[f0.file] && dims[f0.file].w){
+      sample = dims[f0.file];
+      label = (S.isVideo(f0.file) ? 'O vídeo ' : 'A imagem ') + '<b>' + S.baseName(f0.file).replace(/</g, '&lt;') + '</b> (' + sample.w + '×' + sample.h + ')';
+    } else { sample = { w:16, h:9 }; label = 'Um vídeo 16:9'; }
+    var f = S.fitInside(sample.w, sample.h, fhd.w, fhd.h);
+    html += '<br>' + label + ' aparece com <b>' + f.w + ' × ' + f.h + ' px</b> em Full HD';
+    html += (f.w >= fhd.w - 4 && f.h >= fhd.h - 4) ? ' — ocupa a área toda.' : ', centrado, com margem ' + (f.w < fhd.w - 4 ? 'dos lados.' : 'em cima e em baixo.');
     $('sizeHint').innerHTML = html;
   }
 
@@ -784,20 +918,12 @@
     var v = cfg.video, side = S.isSide(v.position);
     $('mediaOn').checked = !!v.on;
     document.querySelectorAll('.media-dep').forEach(function(el){ el.classList.toggle('disabled', !v.on); });
-    $('mediaKind').querySelectorAll('button').forEach(function(b){ b.classList.toggle('on', b.dataset.v === v.kind); });
     $('mediaPos').querySelectorAll('button').forEach(function(b){ b.classList.toggle('on', b.dataset.v === v.position); });
-    $('videoFileField').hidden = v.kind !== 'video';
-    $('imagesField').hidden = v.kind !== 'images';
-    $('secondsField').hidden = v.kind !== 'images';
-    setIfIdle($('videoFile'), 'value', v.file);
-    if (document.activeElement !== $('mediaImages')){
-      var listTxt = v.images.join('\n');
-      if ($('mediaImages').value !== listTxt){ $('mediaImages').value = listTxt; renderThumbs(); }
-    }
     setIfIdle($('mediaSeconds'), 'value', v.seconds);
     $('mediaSizeLbl').textContent = side ? 'Largura da área' : 'Altura da área';
     setIfIdle($('mediaSize'), 'value', side ? v.width : v.size);
     $('mediaSizeOut').textContent = $('mediaSize').value + '%';
+    renderFiles();
     renderSizeHint();
 
     $('speakOn').checked = !!cfg.speak;
