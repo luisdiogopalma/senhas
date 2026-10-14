@@ -117,6 +117,31 @@
   .setup-note{ background:rgba(227,6,19,.06); border:1px solid rgba(227,6,19,.35); color:var(--red-deep);
     font-weight:500; padding:.9rem 1rem; border-radius:12px; font-size:.9rem; line-height:1.5; margin-bottom:1rem; display:none; }
 
+  .settings-link{ display:inline-block; margin-top:.8rem; color:var(--muted); font-size:.8rem; text-decoration:none; }
+  .settings-link:hover{ color:var(--ink); text-decoration:underline; }
+
+  /* 0000 message box */
+  .modal{ position:fixed; inset:0; z-index:30; display:none; align-items:center; justify-content:center;
+    background:rgba(23,17,14,.42); padding:1rem; }
+  .modal.on{ display:flex; }
+  .modal .sheet{ width:100%; max-width:440px; background:var(--surface); border-radius:20px; padding:1.3rem;
+    box-shadow:0 30px 60px -20px rgba(23,17,14,.5); }
+  .modal h2{ font-weight:700; font-size:1.15rem; margin-bottom:.25rem; }
+  .modal .sub{ color:var(--muted); font-size:.85rem; margin-bottom:.9rem; }
+  .modal textarea{ width:100%; min-height:7rem; resize:vertical; font-family:inherit; font-size:1.1rem; color:var(--ink);
+    border:1px solid var(--line-strong); border-radius:12px; padding:.75rem .85rem; background:var(--surface-2); }
+  .modal textarea:focus{ outline:3px solid rgba(227,6,19,.35); outline-offset:1px; border-color:var(--red); }
+  .modal .count{ text-align:right; color:var(--placeholder); font-size:.75rem; margin:.3rem .1rem .8rem; }
+  .modal .send{ display:grid; grid-template-columns:1fr 1fr; gap:.6rem; }
+  .modal .send .key.call{ padding:.9rem 0; }
+  .modal .cancel{ display:block; margin:.9rem auto 0; background:none; border:0; color:var(--muted);
+    font-family:inherit; font-size:.9rem; cursor:pointer; }
+  .modal .cancel:hover{ color:var(--ink); }
+  .toast{ position:fixed; left:50%; bottom:1.4rem; transform:translateX(-50%) translateY(20px); opacity:0;
+    background:var(--ink); color:#fff; font-weight:500; font-size:.9rem; padding:.6rem 1rem; border-radius:10px;
+    transition:opacity .25s ease, transform .25s var(--ease-out); pointer-events:none; z-index:40; }
+  .toast.on{ opacity:1; transform:translateX(-50%) translateY(0); }
+
   @media (prefers-reduced-motion: reduce){ .key:active{ transform:none; } .key.call.flash{ animation:none; } }
 </style>
 </head>
@@ -174,20 +199,41 @@
   <div class="footer">
     <button class="reset" id="resetAll">Repor tudo a zero</button>
     <p class="hint">Cada gabinete abre a sua própria página (fica guardada neste dispositivo). Escreva com o teclado numérico e carregue em <b>Enter</b> para chamar. <b>Enter</b> chama em português; o botão <b>Call</b> chama em inglês. Depois de chamar, o botão usado fica amarelo — carregue outra vez para <b>rechamar</b> a mesma senha (ou no outro idioma), e escreva um novo número para recomeçar.</p>
+    <a class="settings-link" href="settings.html">Definições</a>
   </div>
 </div>
+
+<div class="modal" id="msgModal" role="dialog" aria-modal="true" aria-labelledby="msgTitle">
+  <div class="sheet">
+    <h2 id="msgTitle">Mensagem para o ecrã</h2>
+    <p class="sub">O texto aparece no ecrã da sala de espera e é lido em voz alta.</p>
+    <textarea id="msgInput" maxlength="200" placeholder="Escreva aqui…"></textarea>
+    <div class="count"><span id="msgCount">0</span>/200</div>
+    <div class="send">
+      <button class="key call" id="msgEn">
+        <svg class="flag" viewBox="0 0 30 20" aria-hidden="true"><rect width="30" height="20" fill="#012169"/><path d="M0,0 30,20 M30,0 0,20" stroke="#fff" stroke-width="4"/><path d="M0,0 30,20 M30,0 0,20" stroke="#C8102E" stroke-width="1.8"/><rect x="12.5" width="5" height="20" fill="#fff"/><rect y="7.5" width="30" height="5" fill="#fff"/><rect x="13.5" width="3" height="20" fill="#C8102E"/><rect y="8.5" width="30" height="3" fill="#C8102E"/></svg>
+        <span>Speak</span>
+      </button>
+      <button class="key call" id="msgPt">
+        <svg class="flag" viewBox="0 0 30 20" aria-hidden="true"><rect width="30" height="20" fill="#DA291C"/><rect width="12" height="20" fill="#046A38"/><circle cx="12" cy="10" r="4.6" fill="#FFE900"/><circle cx="12" cy="10" r="2.6" fill="#DA291C"/><circle cx="12" cy="10" r="2.6" fill="none" stroke="#fff" stroke-width=".9"/></svg>
+        <span>Falar</span>
+      </button>
+    </div>
+    <button class="cancel" id="msgCancel">Cancelar</button>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
 
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 <script src="config.js"></script>
+<script src="shared.js"></script>
 <script>
 (function(){
-  var rooms = (Array.isArray(ROOMS) && ROOMS.length) ? ROOMS : ["Gabinete 1"];
+  var S = window.Senhas;
   var MAX_DIGITS = 4;
-
-  var db = null;
-  try{ firebase.initializeApp(firebaseConfig); db = firebase.database(); }
-  catch(err){ document.getElementById('setupNote').style.display = 'block'; console.error('Firebase not configured yet:', err); }
+  var db = S.db();
+  if (!db) document.getElementById('setupNote').style.display = 'block';
 
   var chipsWrap = document.getElementById('rooms');
   var prompt    = document.getElementById('prompt');
@@ -201,51 +247,73 @@
   var callPtLabel = document.getElementById('callPtLabel');
   var callEnLabel = document.getElementById('callEnLabel');
 
-  var selected = null;
+  var settings = S.merge(null);
+  var settingsReady = false;
+  var selected = null;         // room id
   var entry = '';
-  var justCalled = false;      // a call was made and no new digits typed yet
-  var lastLang = null;         // 'pt' | 'en' — which button made the last call
+  var justCalled = false;
   var latest = {};
 
-  function save(i){ try{ localStorage.setItem('senha-gabinete', String(i)); }catch(e){} }
-  function load(){ try{ var v = localStorage.getItem('senha-gabinete'); return v===null?null:parseInt(v,10); }catch(e){ return null; } }
+  function roomById(id){ for (var i=0;i<settings.rooms.length;i++){ if (settings.rooms[i].id === id) return settings.rooms[i]; } return null; }
+  function activeRooms(){ return settings.rooms.filter(function(r){ return r.active; }); }
+
+  // ---- remembering this device's room ----
+  function save(id){ try{ localStorage.setItem('senha-gabinete-id', id); }catch(e){} }
+  function load(){
+    try{
+      var v = localStorage.getItem('senha-gabinete-id');
+      if (v !== null) return v;
+      var old = localStorage.getItem('senha-gabinete');           // older version stored a position
+      if (old !== null && settings.rooms[parseInt(old,10)]) return settings.rooms[parseInt(old,10)].id;
+    }catch(e){}
+    return null;
+  }
   function fromURL(){
-    var p = new URLSearchParams(location.search).get('gab');
-    var raw = p || location.hash.replace('#','');
-    if(!raw) return null;
-    var idx = parseInt(raw,10) - 1;
-    return (idx>=0 && idx<rooms.length) ? idx : null;
+    var h = location.hash.replace('#','');
+    if (!h) return null;
+    if (h.indexOf('g=') === 0) return decodeURIComponent(h.slice(2));
+    var n = parseInt(h, 10);                                      // older links: #3 = third room
+    return (!isNaN(n) && settings.rooms[n-1]) ? settings.rooms[n-1].id : null;
   }
 
-  var chips = [];
-  rooms.forEach(function(name, i){
-    var b = document.createElement('button');
-    b.className = 'chip'; b.textContent = name;
-    b.addEventListener('click', function(){ selectRoom(i); });
-    chipsWrap.appendChild(b); chips.push(b);
-  });
-
-  function selectRoom(i){
-    selected = i; save(i);
-    if (history.replaceState) history.replaceState(null, '', '#' + (i+1)); else location.hash = '#'+(i+1);
-    chips.forEach(function(c, k){ c.classList.toggle('active', k===i); });
+  // ---- room chips ----
+  var chips = {};
+  function renderChips(){
+    chipsWrap.innerHTML = ''; chips = {};
+    activeRooms().forEach(function(r){
+      var b = document.createElement('button');
+      b.className = 'chip' + (r.id === selected ? ' active' : '');
+      b.textContent = r.name;
+      b.addEventListener('click', function(){ selectRoom(r.id); });
+      chipsWrap.appendChild(b); chips[r.id] = b;
+    });
+  }
+  function selectRoom(id){
+    var r = roomById(id);
+    if (!r || !r.active){ deselect(); return; }
+    selected = id; save(id);
+    if (history.replaceState) history.replaceState(null, '', '#g=' + encodeURIComponent(id));
+    Object.keys(chips).forEach(function(k){ chips[k].classList.toggle('active', k === id); });
     prompt.style.display = 'none';
     padArea.classList.add('on');
-    whoEl.textContent = rooms[i];
+    whoEl.textContent = r.name;
     clearEntry(); renderCurrent();
+  }
+  function deselect(){
+    selected = null;
+    padArea.classList.remove('on');
+    prompt.style.display = '';
+    Object.keys(chips).forEach(function(k){ chips[k].classList.remove('active'); });
   }
 
   function renderCurrent(){
     if (selected === null) return;
-    var e = latest[selected];
-    var num = (e && typeof e === 'object') ? e.n : e;
-    currentEl.textContent = (num && num > 0) ? num : '—';
+    var n = S.entryN(latest[selected]);
+    currentEl.textContent = n ? n : '—';
   }
 
   function setCallState(called, lang){
     justCalled = called;
-    lastLang = called ? lang : null;
-    // the button that made the call shows its recall state; the other stays green
     callPt.classList.toggle('recall', called && lang === 'pt');
     callPtLabel.textContent = (called && lang === 'pt') ? 'Rechamar ↻' : 'Chamar';
     callEn.classList.toggle('recall', called && lang === 'en');
@@ -257,10 +325,22 @@
     else { entryEl.textContent = entry; entryEl.classList.remove('empty'); }
     eraseBtn.hidden = (entry === '');
   }
+
+  // ---- 0000: four zeros on an empty box opens the message box ----
+  var zeroTaps = 0, lastZeroAt = 0;
   function addDigit(d){
     if (selected === null) return;
-    if (justCalled){ entry = ''; setCallState(false); }   // typing starts a fresh senha
-    if (entry.length < MAX_DIGITS && !(entry === '' && d === '0')){ entry += d; }
+    if (justCalled){ entry = ''; setCallState(false); }
+    if (d === '0' && entry === ''){
+      var now = Date.now();
+      zeroTaps = (now - lastZeroAt < 2500) ? zeroTaps + 1 : 1;
+      lastZeroAt = now;
+      if (zeroTaps >= 4){ zeroTaps = 0; openMsg(); }
+      renderEntry();
+      return;
+    }
+    zeroTaps = 0;
+    if (entry.length < MAX_DIGITS) entry += d;
     renderEntry();
   }
   function eraseDigit(){ if (justCalled) setCallState(false); entry = entry.slice(0, -1); renderEntry(); }
@@ -270,49 +350,114 @@
     if (selected === null || !db) return;
     var val = parseInt(entry, 10);
     if (isNaN(val) || val <= 0) return;
+
+    // The same senha never shows in two rooms: clear it from any other room (silently).
+    Object.keys(latest).forEach(function(id){
+      if (id !== selected && S.entryN(latest[id]) === val) db.ref('queue/' + id + '/n').set(0);
+    });
+
     db.ref('queue/' + selected).transaction(function(cur){
       cur = cur || {};
-      return { n: val, call: (cur.call || 0) + 1, lang: lang };
+      return { n: val, call: (cur.call || 0) + 1, lang: lang, at: firebase.database.ServerValue.TIMESTAMP };
     });
     var btn = (lang === 'en') ? callEn : callPt;
     btn.classList.remove('flash'); void btn.offsetWidth; btn.classList.add('flash');
     setCallState(true, lang);
   }
 
-  document.querySelectorAll('.key[data-d]').forEach(function(k){
+  document.querySelectorAll('.pad .key[data-d]').forEach(function(k){
     k.addEventListener('click', function(){ addDigit(k.getAttribute('data-d')); this.blur(); });
   });
   eraseBtn.addEventListener('click', function(){ eraseDigit(); this.blur(); });
   callPt.addEventListener('click', function(){ call('pt'); this.blur(); });
   callEn.addEventListener('click', function(){ call('en'); this.blur(); });
 
+  // ---- message box ----
+  var modal = document.getElementById('msgModal');
+  var msgInput = document.getElementById('msgInput');
+  var msgCount = document.getElementById('msgCount');
+  function modalOpen(){ return modal.classList.contains('on'); }
+  function openMsg(){
+    modal.classList.add('on');
+    msgInput.value = ''; msgCount.textContent = '0';
+    setTimeout(function(){ msgInput.focus(); }, 30);
+  }
+  function closeMsg(){ modal.classList.remove('on'); msgInput.blur(); }
+  function sendMsg(lang){
+    var text = msgInput.value.trim();
+    if (!text){ msgInput.focus(); return; }
+    if (!db) return;
+    db.ref('message').set({
+      text: text.slice(0, 200), lang: lang,
+      id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
+      at: firebase.database.ServerValue.TIMESTAMP
+    }).then(function(){ toast('Enviado para o ecrã'); })
+      .catch(function(){ toast('Não foi possível enviar — ver regras da base de dados'); });
+    closeMsg();
+  }
+  msgInput.addEventListener('input', function(){ msgCount.textContent = msgInput.value.length; });
+  msgInput.addEventListener('keydown', function(e){
+    if (e.key === 'Enter' && !e.shiftKey){ e.preventDefault(); sendMsg('pt'); }
+  });
+  document.getElementById('msgPt').addEventListener('click', function(){ sendMsg('pt'); });
+  document.getElementById('msgEn').addEventListener('click', function(){ sendMsg('en'); });
+  document.getElementById('msgCancel').addEventListener('click', closeMsg);
+  modal.addEventListener('click', function(e){ if (e.target === modal) closeMsg(); });
+
+  var toastEl = document.getElementById('toast'), toastT;
+  function toast(t){
+    toastEl.textContent = t; toastEl.classList.add('on');
+    clearTimeout(toastT); toastT = setTimeout(function(){ toastEl.classList.remove('on'); }, 2200);
+  }
+
+  // ---- physical keyboard ----
   document.addEventListener('keydown', function(e){
+    if (modalOpen()){ if (e.key === 'Escape') closeMsg(); return; }
     if (selected === null) return;
     if (e.key >= '0' && e.key <= '9'){ addDigit(e.key); }
     else if (e.key === 'Backspace'){ e.preventDefault(); eraseDigit(); }
-    else if (e.key === 'Enter'){ e.preventDefault(); call('pt'); }   // Enter = Portuguese
+    else if (e.key === 'Enter'){ e.preventDefault(); call('pt'); }
     else if (e.key === 'Escape'){ clearEntry(); }
   });
 
   document.getElementById('resetAll').addEventListener('click', function(){
     if (!db) return;
     if (!confirm('Repor TODAS as senhas a zero? Isto limpa o ecrã da sala de espera.')) return;
-    rooms.forEach(function(_, i){ db.ref('queue/' + i + '/n').set(0); });
+    var ids = {};
+    Object.keys(latest).forEach(function(id){ ids[id] = 1; });
+    settings.rooms.forEach(function(r){ ids[r.id] = 1; });
+    Object.keys(ids).forEach(function(id){ db.ref('queue/' + id + '/n').set(0); });
   });
 
+  function onSettings(){
+    renderChips();
+    if (!settingsReady){
+      settingsReady = true;
+      var initial = fromURL();
+      if (initial === null) initial = load();
+      if (initial !== null) selectRoom(initial);
+      return;
+    }
+    if (selected !== null){
+      var r = roomById(selected);
+      if (!r || !r.active) deselect(); else whoEl.textContent = r.name;
+    }
+  }
+
+  renderEntry();
+
   if (db){
+    db.ref('settings').on('value', function(snap){ settings = S.merge(snap.val()); onSettings(); },
+                                   function(){ onSettings(); });
     db.ref('queue').on('value', function(snap){ latest = snap.val() || {}; renderCurrent(); });
     var conn = document.getElementById('conn'), connText = document.getElementById('connText');
     db.ref('.info/connected').on('value', function(s){
       var on = !!s.val(); conn.classList.toggle('off', !on);
       connText.textContent = on ? 'ligado' : 'sem ligação';
     });
+  } else {
+    onSettings();
   }
-
-  renderEntry();
-  var initial = fromURL();
-  if (initial === null) initial = load();
-  if (initial !== null && initial >= 0 && initial < rooms.length) selectRoom(initial);
 })();
 </script>
 </body>

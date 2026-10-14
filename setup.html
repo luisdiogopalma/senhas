@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Setup — waiting-room senha display</title>
+<style>
+  @font-face{font-family:"DIN";font-weight:300;font-style:normal;src:url("DINLig.otf") format("opentype");font-display:swap;}
+  @font-face{font-family:"DIN";font-weight:400;font-style:normal;src:url("DINreg.otf") format("opentype");font-display:swap;}
+  @font-face{font-family:"DIN";font-weight:500;font-style:normal;src:url("DINMed.otf") format("opentype");font-display:swap;}
+  @font-face{font-family:"DIN";font-weight:700;font-style:normal;src:url("DINBol.otf") format("opentype");font-display:swap;}
+  @font-face{font-family:"DIN";font-weight:900;font-style:normal;src:url("DINBla.otf") format("opentype");font-display:swap;}
+  @font-face{font-family:"DIN";font-weight:500;font-style:italic;src:url("DIN-mediumitalic.otf") format("opentype");font-display:swap;}
+
+  :root{
+    --paper:#F5EFE8; --paper-2:#FBF7F2; --ink:#1A1113; --soft:#6B5A57;
+    --red:#E30613; --red-deep:#AA2A14; --line:#E4D8CE;
+    --code-bg:#241416; --code-ink:#F3E7E5;
+  }
+  *{ box-sizing:border-box; margin:0; padding:0; }
+  body{
+    background:var(--paper); color:var(--ink); font-family:"DIN", system-ui, sans-serif;
+    font-weight:400; line-height:1.6; -webkit-font-smoothing:antialiased;
+    padding: 2.5rem 1.25rem 5rem;
+  }
+  .wrap{ max-width:760px; margin:0 auto; }
+
+  .top{ display:flex; align-items:center; gap:1rem; padding-bottom:1.4rem; border-bottom:3px solid var(--red); margin-bottom:2.2rem; }
+  .top img{ height:4.6rem; width:auto; }
+  .top .kicker{ font-weight:500; text-transform:uppercase; letter-spacing:.16em; color:var(--red); font-size:.8rem; }
+  .top h1{ font-weight:900; font-size:2rem; line-height:1.05; letter-spacing:-.01em; margin-top:.15rem; }
+
+  .lead{ font-size:1.1rem; color:var(--ink); margin-bottom:1rem; }
+  .lead b{ font-weight:700; }
+  .meta{ font-weight:500; color:var(--soft); font-size:.92rem; margin-bottom:1.4rem; }
+  .files{ background:var(--paper-2); border:1px solid var(--line); border-radius:14px; padding:1rem 1.2rem; margin-bottom:2.4rem; font-size:.95rem; }
+  .files b{ font-weight:700; }
+
+  .step{ display:flex; gap:1.1rem; padding:1.6rem 0; border-top:1px solid var(--line); }
+  .step:first-of-type{ border-top:0; }
+  .num{ flex:0 0 auto; font-weight:900; font-size:1.9rem; color:var(--red); line-height:1; width:2.4rem; text-align:right; font-variant-numeric:tabular-nums; }
+  .body{ flex:1 1 auto; min-width:0; }
+  .body h2{ font-weight:700; font-size:1.25rem; margin-bottom:.15rem; }
+  .body .est{ font-weight:500; color:var(--soft); font-size:.85rem; }
+  .body p{ margin:.6rem 0; }
+  .body ol, .body ul{ margin:.5rem 0 .5rem 1.2rem; }
+  .body li{ margin:.35rem 0; }
+  b, strong{ font-weight:700; }
+
+  code{ font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; font-size:.9em;
+    background:#EBDFD6; color:#7A0A10; padding:.08em .35em; border-radius:5px; }
+  .code{ position:relative; margin:.9rem 0; }
+  pre{ background:var(--code-bg); color:var(--code-ink); border-radius:12px; padding:1rem 1.1rem; overflow:auto;
+    font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; font-size:.85rem; line-height:1.5; }
+  .copy{ position:absolute; top:.55rem; right:.55rem; font-family:"DIN",sans-serif; font-weight:700; font-size:.72rem;
+    text-transform:uppercase; letter-spacing:.06em; color:#fff; background:var(--red); border:0; border-radius:7px;
+    padding:.32rem .6rem; cursor:pointer; opacity:.9; transition:opacity .15s ease; }
+  .copy:hover{ opacity:1; }
+
+  .note{ border-left:3px solid var(--red); background:rgba(227,6,19,.06); border-radius:0 10px 10px 0;
+    padding:.8rem 1rem; margin:.9rem 0; font-size:.95rem; }
+  .note b{ color:var(--red-deep); }
+
+  .pick{ display:grid; grid-template-columns:1fr; gap:1rem; margin:.8rem 0; }
+  .opt{ border:1px solid var(--line); border-radius:14px; padding:1rem 1.2rem; background:var(--paper-2); }
+  .opt h3{ font-weight:700; font-size:1.05rem; margin-bottom:.3rem; }
+  .opt .tag{ display:inline-block; font-weight:700; font-size:.72rem; text-transform:uppercase; letter-spacing:.06em;
+    color:var(--red); border:1px solid rgba(227,6,19,.4); border-radius:999px; padding:.12rem .5rem; margin-left:.4rem; }
+
+  .faq{ margin-top:2.6rem; border-top:3px solid var(--red); padding-top:1.6rem; }
+  .faq h2{ font-weight:900; font-size:1.5rem; margin-bottom:1rem; }
+  .faq .q{ font-weight:700; margin-top:1.1rem; }
+  footer{ margin-top:3rem; color:var(--soft); font-weight:300; font-size:.85rem; text-align:center; }
+
+  a{ color:var(--red-deep); text-underline-offset:2px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="top">
+    <img src="logo.svg" alt="G.A.T. CheckpointLX">
+    <div>
+      <div class="kicker">Sala de espera · senhas</div>
+      <h1>Setup guide</h1>
+    </div>
+  </div>
+
+  <p class="lead">You'll end up with <b>two links</b>: a <b>Display</b> link for the waiting-room screen (big gabinete numbers + your looping video), and a <b>Control</b> link that each nurse opens to call senhas from a number pad.</p>
+  <p class="meta">They sync live through Firebase, a free Google service. No coding — about 15 minutes, once.</p>
+
+  <div class="files"><b>Your files</b> (keep them all in one folder): <code>config.js</code>, <code>shared.js</code>, <code>display.html</code>, <code>control.html</code>, <code>settings.html</code>, your video renamed to <code>video.mp4</code>, the DIN font files (<code>.otf</code>), and the two logo files (<code>logo.svg</code>, <code>logo-light.svg</code>).</div>
+
+  <div class="step">
+    <div class="num">1</div>
+    <div class="body">
+      <h2>Create the free Firebase project <span class="est">· ~4 min</span></h2>
+      <ol>
+        <li>Go to <a href="https://console.firebase.google.com" target="_blank" rel="noopener">console.firebase.google.com</a> and sign in with a Google account.</li>
+        <li>Click <b>Create a project</b> (or <b>Add project</b>).</li>
+        <li>Name it, e.g. <code>senhas-checkpointlx</code>. Click <b>Continue</b>.</li>
+        <li>Turn <b>Google Analytics off</b> (not needed). Click <b>Create project</b>, wait, then <b>Continue</b>.</li>
+      </ol>
+      <div class="note">This is the free <b>Spark</b> plan — no credit card. If anything suggests upgrading, ignore it; a few numbers use a tiny fraction of the free limits.</div>
+    </div>
+  </div>
+
+  <div class="step">
+    <div class="num">2</div>
+    <div class="body">
+      <h2>Turn on the Realtime Database <span class="est">· ~3 min</span></h2>
+      <ol>
+        <li>Left menu: <b>Build → Realtime Database</b>.</li>
+        <li>Click <b>Create Database</b>.</li>
+        <li>Location: <b>europe-west1 (Belgium)</b> — closest to Portugal. Click <b>Next</b>.</li>
+        <li>Choose <b>Start in locked mode</b>, click <b>Enable</b>.</li>
+        <li>Open the <b>Rules</b> tab, replace everything with this, and click <b>Publish</b>:</li>
+      </ol>
+      <div class="code">
+        <button class="copy" data-copy="rules">Copy</button>
+        <pre id="rules">{
+  "rules": {
+    "queue":    { ".read": true, ".write": true },
+    "settings": { ".read": true, ".write": true },
+    "message":  { ".read": true, ".write": true },
+    "display":  { ".read": true, ".write": true },
+    "meta":     { ".read": true, ".write": true }
+  }
+}</pre>
+      </div>
+      <div class="note"><b>Honest note:</b> these rules let anyone with your database link read/change the numbers and display settings. That's fine here — it holds <b>only senha numbers and screen settings</b>, no patient data, and the link isn't published. Want a shared password on top? Just ask.</div>
+    </div>
+  </div>
+
+  <div class="step">
+    <div class="num">3</div>
+    <div class="body">
+      <h2>Paste your settings into <code>config.js</code> <span class="est">· ~3 min</span></h2>
+      <ol>
+        <li>Click the <b>gear icon</b> → <b>Project settings</b>.</li>
+        <li>Under <b>Your apps</b>, click the <b>&lt;/&gt;</b> (Web) icon.</li>
+        <li>Give it a nickname, click <b>Register app</b>, and <b>skip</b> the hosting offer.</li>
+        <li>You'll see a <code>firebaseConfig</code> block. Open <code>config.js</code> in Notepad/TextEdit and paste each value between the quotes, replacing every <code>PASTE_HERE</code>.</li>
+        <li>Make sure <code>databaseURL</code> is filled — it looks like <code>https://…-default-rtdb.europe-west1.firebasedatabase.app</code>. If missing, copy it from the top of the Realtime Database page.</li>
+        <li>While there, set your <b>gabinete names</b> and the <b>header</b> at the top of <code>config.js</code>. Save.</li>
+      </ol>
+    </div>
+  </div>
+
+  <div class="step">
+    <div class="num">4</div>
+    <div class="body">
+      <h2>Add your video</h2>
+      <p>Rename your video to exactly <code>video.mp4</code> and keep it in the same folder.</p>
+      <ul>
+        <li>No video yet? Fine — the screen shows the numbers full-size until you add one.</li>
+        <li>Over ~90 MB and hosting online? Shrink it with <a href="https://handbrake.fr" target="_blank" rel="noopener">HandBrake</a> (free), or use the local option in Step 5.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="step">
+    <div class="num">5</div>
+    <div class="body">
+      <h2>Put it online — pick one</h2>
+      <div class="pick">
+        <div class="opt">
+          <h3>Host it free <span class="tag">recommended</span></h3>
+          <ol>
+            <li>Create a free account at <a href="https://github.com" target="_blank" rel="noopener">github.com</a>.</li>
+            <li><b>New repository</b> → name it <code>senhas</code> → <b>Public</b> → <b>Create</b>.</li>
+            <li>Click <b>uploading an existing file</b> and drag in <b>every file in the folder</b> — the HTML files, <code>config.js</code>, <code>video.mp4</code>, all the <code>.otf</code> fonts, and both logos. <b>Commit changes</b>.</li>
+            <li><b>Settings → Pages</b> → Source <b>Deploy from a branch</b>, Branch <b>main</b> / <b>(root)</b> → <b>Save</b>.</li>
+            <li>After 1–2 min your links are:<br>
+              Display → <code>https://YOUR-USERNAME.github.io/senhas/display.html</code><br>
+              Control → <code>https://YOUR-USERNAME.github.io/senhas/control.html</code></li>
+          </ol>
+          <div class="note">A public repo means the files (including the video) are publicly viewable. Fine for a generic waiting-room video; if it's sensitive, use the local option.</div>
+        </div>
+        <div class="opt">
+          <h3>Run it locally — even from a USB stick <span class="tag">large / private video</span></h3>
+          <p>If the screen is driven by a PC you control, the page and video can live entirely on that PC or on a <b>USB pendrive</b> plugged into it — the video never goes online:</p>
+          <ol>
+            <li>Copy the whole folder — <code>display.html</code>, <code>config.js</code>, the fonts, the logos and <code>video.mp4</code> — into one folder on the PC or the pendrive.</li>
+            <li>Double-click <code>display.html</code>, then press <b>F11</b> for fullscreen. It finds <code>video.mp4</code> next to it automatically (the drive letter doesn't matter). To change the video later, just replace <code>video.mp4</code> in that folder.</li>
+            <li>Keep the pendrive plugged in. The PC still needs internet — the senha numbers sync through Firebase.</li>
+            <li>For staff, still host online but upload only <code>config.js</code>, <code>control.html</code>, the fonts and logos (tiny, no video) — every PC opens that control link. Both talk to the same Firebase.</li>
+          </ol>
+          <div class="note">On the local route the screen won't force itself awake, so set Windows to <b>never sleep</b> and turn off the screensaver (Settings → Power) so the display stays on.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="step">
+    <div class="num">6</div>
+    <div class="body">
+      <h2>Go live</h2>
+      <p><b>Waiting-room screen:</b> open the <b>Display</b> link and tap <b>Iniciar ecrã</b> once — that single tap turns on the sound and goes fullscreen (then it stays awake and hides the pointer). Bookmark it. After a reboot, tap it again — browsers require one tap before allowing sound.</p>
+      <p><b>Staff:</b> open the <b>Control</b> link. Each nurse taps their <b>gabinete</b> once — it's remembered on that device, so it reopens straight to their pad. Type the senha and press <b>Chamar ✓</b> (or type on the PC number pad and press <b>Enter</b>). <b>⌫</b> deletes a digit, <b>Esc</b> clears. After calling, the button turns amber to <b>rechamar</b> the same senha; typing a new number starts fresh.</p>
+      <div class="note">Tip: give each room its own bookmark that opens directly to its pad by adding the number — e.g. <code>…/control.html#3</code> opens Gabinete 3. <b>Repor tudo a zero</b> clears the board silently.</div>
+    </div>
+  </div>
+
+  <div class="faq">
+    <h2>Everyday questions</h2>
+    <p class="q">Add, rename or switch off a gabinete?</p>
+    <p>Open <code>settings.html</code> (link at the bottom of the control page). The password is <b>6969</b>. Everything there — rooms, grid, video, voice, chime, auto-clear — updates the waiting-room screen live.</p>
+    <p class="q">Numbers not updating?</p>
+    <p>Check the connection dot. If it's red, the device lost internet, or a value in <code>config.js</code> has a typo — most often <code>databaseURL</code>.</p>
+    <p class="q">No sound, or a Brazilian accent?</p>
+    <p>No sound → you didn't tap <b>Iniciar ecrã</b>, or the screen volume is down. Wrong accent → the display device has no European-Portuguese voice, so it fell back. On Windows: <i>Settings → Time &amp; language → Language → add Português (Portugal)</i>, then restart the browser (once). Turn either off with <code>SOUND_ENABLED</code> / <code>SPEAK_ENABLED</code>; change the words with <code>ANNOUNCE_TEMPLATE</code>.</p>
+    <p class="q">Change the look?</p>
+    <p>Colours and fonts live at the top of <code>display.html</code> and <code>control.html</code> — or just ask.</p>
+  </div>
+
+  <footer>G.A.T. CheckpointLX · sistema de senhas da sala de espera</footer>
+</div>
+
+<script>
+  document.querySelectorAll('.copy').forEach(function(btn){
+    btn.addEventListener('click', function(){
+      var el = document.getElementById(btn.getAttribute('data-copy'));
+      var text = el ? el.textContent : '';
+      navigator.clipboard.writeText(text).then(function(){
+        var old = btn.textContent; btn.textContent = 'Copied ✓';
+        setTimeout(function(){ btn.textContent = old; }, 1400);
+      }).catch(function(){});
+    });
+  });
+</script>
+</body>
+</html>
