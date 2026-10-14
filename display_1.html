@@ -1,0 +1,624 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>A atender</title>
+<style>
+  @font-face{font-family:"DIN";font-weight:300;font-style:normal;src:url("DINLig.otf") format("opentype");font-display:swap;}
+  @font-face{font-family:"DIN";font-weight:400;font-style:normal;src:url("DINreg.otf") format("opentype");font-display:swap;}
+  @font-face{font-family:"DIN";font-weight:500;font-style:normal;src:url("DINMed.otf") format("opentype");font-display:swap;}
+  @font-face{font-family:"DIN";font-weight:700;font-style:normal;src:url("DINBol.otf") format("opentype");font-display:swap;}
+  @font-face{font-family:"DIN";font-weight:900;font-style:normal;src:url("DINBla.otf") format("opentype");font-display:swap;}
+  @font-face{font-family:"DIN";font-weight:500;font-style:italic;src:url("DIN-mediumitalic.otf") format("opentype");font-display:swap;}
+
+  :root{
+    --paper:#F6F3EE; --surface:#FFFFFF; --line:#E6DFD5;
+    --ink:#17110E; --label:#4A403A;
+    --red:#E30613; --red-deep:#AA2A14; --ok:#1E7A4C;
+    --num-size:16vmin; --ease-out:cubic-bezier(0.23, 1, 0.32, 1);
+  }
+  *{ box-sizing:border-box; margin:0; padding:0; }
+  html,body{ height:100%; }
+  body{
+    background:var(--paper); color:var(--ink);
+    font-family:"DIN", system-ui, sans-serif;
+    display:flex; flex-direction:column; height:100vh; overflow:hidden; cursor:none;
+  }
+  body.show-cursor{ cursor:default; }
+
+  header{
+    display:flex; align-items:baseline; justify-content:space-between; gap:1.5rem;
+    background:var(--surface);
+    padding: clamp(.8rem, 2.4vh, 1.7rem) clamp(1.2rem, 4vw, 3.5rem);
+    border-bottom:3px solid var(--red);
+    flex:0 0 auto;
+  }
+  .date{
+    font-weight:700; color:var(--red);
+    font-size: clamp(1.2rem, 3.6vh, 2.4rem); letter-spacing:.01em;
+  }
+  .clock{
+    font-weight:700; font-variant-numeric: tabular-nums;
+    color:var(--label); font-size: clamp(1.5rem, 4.6vh, 3rem); letter-spacing:.04em;
+  }
+  .clock .colon{ color:var(--red); }
+
+  /* stage = rooms + media area; data-pos decides where the media sits */
+  .stage{
+    flex:1 1 auto; min-height:0; display:flex; flex-direction:column;
+    gap: clamp(.6rem, 1.6vw, 1.3rem);
+    padding: clamp(1rem, 3vh, 2.2rem) clamp(1.2rem, 4vw, 3.5rem);
+  }
+  .stage[data-pos="top"]{ flex-direction:column-reverse; }
+  .stage[data-pos="left"]{ flex-direction:row-reverse; }
+  .stage[data-pos="right"]{ flex-direction:row; }
+  main{
+    flex:1 1 auto; min-height:0; min-width:0; display:flex; flex-direction:column;
+    gap: clamp(.6rem, 1.6vw, 1.3rem);
+  }
+  .row{ flex:1 1 0; min-height:0; display:flex; gap: clamp(.6rem, 1.6vw, 1.3rem); }
+  .row .card{ flex:1 1 0; min-width:0; }
+  .card{
+    background:var(--surface); color:var(--ink);
+    border:1px solid var(--line);
+    border-radius: clamp(14px, 1.6vw, 22px);
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    min-height:0; position:relative; overflow:hidden;
+    box-shadow: 0 10px 26px -20px rgba(23,17,14,.35);
+    opacity:0; transform: translateY(8px); animation: rise .45s var(--ease-out) forwards;
+  }
+  @keyframes rise{ to{ opacity:1; transform:none; } }
+  .card .label{
+    font-weight:700; text-transform:uppercase; letter-spacing:.11em;
+    font-size: var(--label-size, 1.6rem); color:var(--label);
+    margin-bottom: calc(var(--label-size, 1.6rem) * .5);
+    max-width:92%; text-align:center; line-height:1.15;
+  }
+  .card .num{
+    font-weight:900; line-height:.88; font-variant-numeric: tabular-nums;
+    font-size: var(--num-size); letter-spacing:-.01em; min-height:.9em;
+    transition: color .25s var(--ease-out);
+  }
+  .card.logo-card img{ max-height:65%; max-width:70%; width:auto; height:auto; object-fit:contain; }
+
+  /* calling state: red number + blinking red ring, lasts the whole announcement */
+  .card.calling .num{ color:var(--red); }
+  .card::after{
+    content:""; position:absolute; inset:0; border-radius:inherit;
+    pointer-events:none; opacity:0;
+    box-shadow: inset 0 0 0 6px var(--red);
+    transition: opacity .4s var(--ease-out);
+  }
+  .card.calling::after{ opacity:1; animation: blink 1s ease-in-out infinite; }
+  @keyframes blink{ 0%,100%{ opacity:1; } 50%{ opacity:.25; } }
+
+  /* media box: the picture is sized by JS to fit inside it, centred both ways;
+     the box itself is transparent, so leftover space is just the page background */
+  .media{ flex:0 0 auto; position:relative; overflow:hidden; min-width:0; min-height:0; }
+  .media.hidden{ display:none; }
+  .media video, .media img{
+    position:absolute; display:block; border-radius: clamp(10px, 1.2vw, 18px);
+    opacity:0; transition: opacity .9s ease;
+  }
+  .media .shown{ opacity:1; }
+
+  /* free-text message (0000 on the control page) */
+  .msg{
+    position:fixed; inset:0; z-index:40; display:flex; align-items:center; justify-content:center;
+    background:rgba(246,243,238,.78); opacity:0; pointer-events:none;
+    transition: opacity .35s var(--ease-out);
+  }
+  .msg.on{ opacity:1; }
+  .msg .box{
+    position:relative; background:var(--surface); border-radius: clamp(18px, 2vw, 30px);
+    padding: 6vh 6vw; max-width:86vw; text-align:center;
+    font-weight:700; color:var(--ink); line-height:1.15; overflow-wrap:anywhere;
+    box-shadow: 0 30px 60px -30px rgba(23,17,14,.45);
+  }
+  .msg .box::after{
+    content:""; position:absolute; inset:0; border-radius:inherit; pointer-events:none;
+    box-shadow: inset 0 0 0 7px var(--red); opacity:0;
+  }
+  .msg.speaking .box::after{ opacity:1; animation: blink 1s ease-in-out infinite; }
+
+  .empty-note{ margin:auto; color:var(--label); font-weight:500; font-size:1.4rem; }
+
+  .dot{
+    position:fixed; right:.7rem; bottom:.7rem; width:9px; height:9px; border-radius:50%;
+    background:var(--ok); opacity:.55; transition: background .3s ease, opacity .3s ease;
+  }
+  .dot.off{ background:var(--red); opacity:.95; }
+
+  .start{
+    position:fixed; inset:0; z-index:50; cursor:default;
+    background:var(--paper);
+    display:flex; flex-direction:column; align-items:center; justify-content:center; gap:1.7rem;
+    transition: opacity .4s var(--ease-out);
+  }
+  .start.hidden{ opacity:0; pointer-events:none; }
+  .start .logo{ height: clamp(6rem, 24vh, 13rem); width:auto; }
+  .start button{
+    font-family:"DIN", sans-serif; font-weight:700; font-size:1.4rem; text-transform:uppercase; letter-spacing:.06em;
+    color:#fff; background:var(--red); border:0; border-radius:14px;
+    padding:1.05rem 2.8rem; cursor:pointer;
+    transition: transform .12s var(--ease-out), background .18s ease;
+  }
+  .start button:hover{ background:var(--red-deep); }
+  .start button:active{ transform: scale(.97); }
+  .start button:focus-visible{ outline:3px solid var(--ink); outline-offset:3px; }
+  .start p{ color:var(--label); font-weight:500; font-size:1rem; max-width:28ch; text-align:center; line-height:1.5; }
+
+  @media (prefers-reduced-motion: reduce){
+    .card{ animation:none; opacity:1; transform:none; }
+    .card.calling::after{ animation:none; opacity:1; }  /* steady ring, no blink */
+    .msg.speaking .box::after{ animation:none; opacity:1; }
+    .media video, .media img{ transition:none; }
+    .start{ transition:none; }
+  }
+</style>
+</head>
+<body>
+  <header>
+    <div class="date" id="date">—</div>
+    <div class="clock" id="clock">--<span class="colon">:</span>--</div>
+  </header>
+
+  <div class="stage" id="stage" data-pos="bottom">
+    <main id="grid" aria-live="polite"></main>
+    <div class="media hidden" id="media">
+      <video id="vid" autoplay loop muted playsinline></video>
+      <img id="imgA" alt="">
+      <img id="imgB" alt="">
+    </div>
+  </div>
+
+  <div class="msg" id="msg" aria-live="assertive"><div class="box" id="msgText"></div></div>
+
+  <div class="dot off" id="dot" title="ligação"></div>
+
+  <div class="start" id="start">
+    <img class="logo" src="logo.svg" alt="G.A.T. CheckpointLX">
+    <button id="startBtn">Iniciar ecrã</button>
+    <p>Toque uma vez para ativar o som e o ecrã inteiro.</p>
+  </div>
+
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+  <script src="config.js"></script>
+  <script src="shared.js"></script>
+  <script>
+  (function(){
+    var S = window.Senhas;
+    var root = document.documentElement;
+    document.title = 'A atender';
+
+    // ---- date + clock (pt-PT, "Terça, 5 de Fevereiro de 2026") ----
+    var WEEKDAYS = ['Domingo','Segunda','Terça','Quarta','Quinta','Sexta','Sábado'];
+    var MONTHS = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+    var dateEl = document.getElementById('date'), clockEl = document.getElementById('clock');
+    function tick(){
+      var d = new Date();
+      dateEl.textContent = WEEKDAYS[d.getDay()] + ', ' + d.getDate() + ' de ' + MONTHS[d.getMonth()] + ' de ' + d.getFullYear();
+      clockEl.innerHTML = String(d.getHours()).padStart(2,'0') + '<span class="colon">:</span>' + String(d.getMinutes()).padStart(2,'0');
+    }
+    tick(); setInterval(tick, 15000);
+
+    // ---- state ----
+    var settings = S.merge(null);      // replaced live from the database
+    var queueData = {};                // id -> { n, call, lang, at }
+    var lastCall = {};                 // id -> last call counter seen
+    var shown = {};                    // id -> number currently painted on the tile
+    var queueReady = false;
+    var cellsById = {};
+    var callingId = null;
+    var db = S.db();
+
+    function roomById(id){ for (var i=0;i<settings.rooms.length;i++){ if (settings.rooms[i].id === id) return settings.rooms[i]; } return null; }
+
+    // ================= GRID =================
+    var grid = document.getElementById('grid');
+    function makeTile(t, idx){
+      var card = document.createElement('div');
+      card.className = 'card';
+      card.style.animationDelay = (idx*45) + 'ms';
+      if (t.logo){
+        card.classList.add('logo-card');
+        var img = document.createElement('img'); img.src = 'logo.svg'; img.alt = 'G.A.T. CheckpointLX';
+        card.appendChild(img);
+        return card;
+      }
+      var label = document.createElement('div'); label.className = 'label'; label.textContent = t.name;
+      var num = document.createElement('div'); num.className = 'num'; num.textContent = shown[t.id] || '';
+      card.appendChild(label); card.appendChild(num);
+      if (callingId === t.id) card.classList.add('calling');
+      cellsById[t.id] = { card:card, num:num };
+      return card;
+    }
+    function renderGrid(){
+      var active = settings.rooms.filter(function(r){ return r.active; });
+      var tiles = [];
+      if (settings.showLogo) tiles.push({ logo:true });
+      active.forEach(function(r){ tiles.push(r); });
+      grid.innerHTML = ''; cellsById = {};
+      if (!active.length){
+        var p = document.createElement('div'); p.className = 'empty-note';
+        p.textContent = 'Nenhum gabinete ativo';
+        grid.appendChild(p);
+        return;
+      }
+      var cs = getComputedStyle(grid);
+      var W = grid.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight);
+      var H = grid.clientHeight - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom);
+      var gap = parseFloat(cs.rowGap) || 16;
+      var rows = S.layoutRows(settings, tiles.length, W, H, gap);
+      var idx = 0;
+      rows.forEach(function(count){
+        var row = document.createElement('div'); row.className = 'row';
+        for (var k=0;k<count;k++){ row.appendChild(makeTile(tiles[idx], idx)); idx++; }
+        grid.appendChild(row);
+      });
+      // size the numbers and labels to the tiles actually on screen
+      var maxPerRow = Math.max.apply(null, rows);
+      var tw = (W - (maxPerRow-1)*gap) / maxPerRow;
+      var th = (H - (rows.length-1)*gap) / rows.length;
+      root.style.setProperty('--num-size', Math.max(28, S.numberSize(tw, th)) + 'px');
+      root.style.setProperty('--label-size', Math.max(14, Math.min(th*0.075, tw*0.075, 60)) + 'px');
+    }
+    function paint(id){
+      var c = cellsById[id];
+      if (c) c.num.textContent = shown[id] || '';
+    }
+    var resizeT;
+    window.addEventListener('resize', function(){ clearTimeout(resizeT); resizeT = setTimeout(function(){ renderGrid(); refit(); }, 150); });
+
+    // ================= MEDIA (playlist of videos and images) =================
+    var stage = document.getElementById('stage');
+    var media = document.getElementById('media');
+    var vid = document.getElementById('vid');
+    var layers = [document.getElementById('imgA'), document.getElementById('imgB')];
+    var mediaVisible = false;
+    var plKey = '', plList = [], plTimer = null, activeLayer = -1, failedInRow = 0;
+
+    // size a picture to fit the box, centred horizontally and vertically
+    function fit(el, nw, nh){
+      if (!nw || !nh) return;
+      var bw = media.clientWidth, bh = media.clientHeight;
+      if (!bw || !bh) return;
+      var k = Math.min(bw / nw, bh / nh);
+      var w = Math.round(nw * k), h = Math.round(nh * k);
+      el.style.width = w + 'px'; el.style.height = h + 'px';
+      el.style.left = Math.round((bw - w) / 2) + 'px';
+      el.style.top = Math.round((bh - h) / 2) + 'px';
+    }
+    function refit(){
+      if (vid.getAttribute('src') && vid.videoWidth) fit(vid, vid.videoWidth, vid.videoHeight);
+      layers.forEach(function(l){ if (l.getAttribute('src') && l.naturalWidth) fit(l, l.naturalWidth, l.naturalHeight); });
+    }
+    function setMediaVisible(on){
+      if (on === mediaVisible) return;
+      mediaVisible = on;
+      media.classList.toggle('hidden', !on);
+      requestAnimationFrame(function(){ refit(); renderGrid(); });   // rooms take the freed space
+    }
+
+    function clearVideo(){
+      vid.onloadedmetadata = vid.onended = vid.onerror = null;
+      if (!vid.getAttribute('src')) return;
+      vid.pause(); vid.classList.remove('shown');
+      vid.removeAttribute('src'); vid.load();
+    }
+    function hideImages(except){
+      layers.forEach(function(l){ if (l !== except) l.classList.remove('shown'); });
+    }
+    function stopPlaylist(){
+      clearTimeout(plTimer); plKey = ''; plList = []; activeLayer = -1;
+      clearVideo();
+      layers.forEach(function(l){ l.onload = l.onerror = null; l.classList.remove('shown'); l.removeAttribute('src'); });
+    }
+    function startPlaylist(list){
+      var key = JSON.stringify(list) + '|' + settings.video.seconds;
+      if (key === plKey) return;                          // already playing this list
+      stopPlaylist();
+      plKey = key; plList = list; failedInRow = 0;
+      if (!list.length){ setMediaVisible(false); return; }
+      playItem(0);
+    }
+    function nextItem(i){ playItem((i + 1) % plList.length); }
+    function itemFailed(i, token){
+      if (token !== plKey) return;
+      failedInRow++;
+      if (failedInRow >= plList.length){                  // nothing loads: hide, retry in 30 s
+        setMediaVisible(false);
+        plTimer = setTimeout(function(){ if (token === plKey){ failedInRow = 0; playItem(0); } }, 30000);
+        return;
+      }
+      nextItem(i);                                        // skip a missing/broken file
+    }
+    function playItem(i){
+      var token = plKey, src = S.url(plList[i]), many = plList.length > 1;
+      clearTimeout(plTimer);
+      if (S.isVideo(plList[i])){
+        clearVideo();
+        vid.loop = !many;                                 // a lone video loops; in a list it plays once
+        vid.onloadedmetadata = function(){
+          if (token !== plKey) return;
+          failedInRow = 0;
+          setMediaVisible(true);
+          fit(vid, vid.videoWidth, vid.videoHeight);
+          vid.classList.add('shown'); hideImages(null);
+          var pr = vid.play(); if (pr && pr.catch) pr.catch(function(){});
+        };
+        vid.onended = function(){ if (token === plKey && many) nextItem(i); };
+        vid.onerror = function(){ itemFailed(i, token); };
+        vid.setAttribute('src', src);
+        return;
+      }
+      var next = layers[activeLayer === 0 ? 1 : 0];
+      next.onload = function(){
+        if (token !== plKey) return;
+        failedInRow = 0;
+        setMediaVisible(true);
+        fit(next, next.naturalWidth, next.naturalHeight);
+        next.classList.add('shown'); hideImages(next);
+        activeLayer = layers.indexOf(next);
+        clearVideo();
+        if (many) plTimer = setTimeout(function(){ nextItem(i); }, S.clamp(settings.video.seconds, 2, 600) * 1000);
+      };
+      next.onerror = function(){ itemFailed(i, token); };
+      next.removeAttribute('src');                        // guarantees a fresh load event
+      next.src = src;
+    }
+
+    function applyMedia(){
+      var v = settings.video;
+      stage.dataset.pos = v.position;
+      var side = S.isSide(v.position);
+      media.style.height = side ? '' : S.clamp(v.size, 10, 70) + 'vh';
+      media.style.width = side ? S.clamp(v.width, 10, 70) + 'vw' : '';
+      var list = v.on ? v.playlist.filter(function(x){ return x.on && S.isMedia(x.file); }).map(function(x){ return x.file; }) : [];
+      startPlaylist(list);
+      requestAnimationFrame(refit);
+    }
+
+    function applySettings(){
+      applyMedia();
+      requestAnimationFrame(renderGrid);
+    }
+
+    // ---- keep the screen awake ----
+    function requestWake(){ if ('wakeLock' in navigator){ navigator.wakeLock.request('screen').catch(function(){}); } }
+    document.addEventListener('visibilitychange', function(){ if(!document.hidden) requestWake(); });
+
+    // ---- reveal cursor briefly on mouse move ----
+    var curT; window.addEventListener('mousemove', function(){
+      document.body.classList.add('show-cursor');
+      clearTimeout(curT); curT = setTimeout(function(){ document.body.classList.remove('show-cursor'); }, 2500);
+    });
+
+    // ================= SOUND + VOICE =================
+    var audioCtx = null;
+    function ensureAudio(){
+      if (!audioCtx){ var AC = window.AudioContext || window.webkitAudioContext; if (AC) audioCtx = new AC(); }
+      if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
+    }
+    function chime(){
+      return new Promise(function(resolve){
+        if (!settings.chime.on || !audioCtx){ resolve(); return; }
+        var ms = S.playChime(audioCtx, settings.chime.type, settings.chime.volume);
+        setTimeout(resolve, ms);
+      });
+    }
+
+    var voices = [];
+    function loadVoices(){ if ('speechSynthesis' in window) voices = window.speechSynthesis.getVoices() || []; }
+    var MALE_HINTS = {
+      pt: ['duarte','joaquim','felipe','ricardo','luciano','male','homem'],
+      en: ['george','ryan','thomas','daniel','arthur','oliver','guy','mark','male','man']
+    };
+    function scoreVoice(v, wanted){
+      var name = (v.name || '').toLowerCase();
+      var vlang = (v.lang || '').toLowerCase().replace('_','-');
+      var prefix = wanted.split('-')[0];
+      var s = 0;
+      if (vlang === wanted) s += 100;
+      else if (vlang.indexOf(prefix + '-') === 0) s += 40;
+      else return -1;
+      if (prefix === 'pt' && vlang === 'pt-br') return -1;          // never Brazilian by default
+      if (/natural|online|neural/.test(name)) s += 15;              // Edge's natural voices sound best
+      var hints = MALE_HINTS[prefix] || [];
+      for (var i=0;i<hints.length;i++){ if (name.indexOf(hints[i]) !== -1){ s += 20; break; } }
+      if (/(maria|helena|raquel|fernanda|catarina|joana|luciana|female|zira|hazel|susan|libby|sonia|maisie)/.test(name)) s -= 8;
+      return s;
+    }
+    function pickVoice(lang){
+      if (!voices.length) loadVoices();
+      var chosen = settings.voice[lang];
+      if (chosen){
+        for (var i=0;i<voices.length;i++){ if (voices[i].name === chosen) return voices[i]; }
+      }
+      var wanted = (lang === 'en') ? 'en-gb' : 'pt-pt';
+      var best = null, bestScore = -1;
+      voices.forEach(function(v){ var s = scoreVoice(v, wanted); if (s > bestScore){ bestScore = s; best = v; } });
+      return best;
+    }
+    function speak(text, lang){
+      return new Promise(function(resolve){
+        if (!settings.speak || !('speechSynthesis' in window)){ resolve(); return; }
+        var done = false;
+        function finish(){ if (!done){ done = true; resolve(); } }
+        try{
+          var u = new SpeechSynthesisUtterance(text);
+          var v = pickVoice(lang);
+          u.lang = v ? v.lang : (lang === 'en' ? 'en-GB' : 'pt-PT');
+          if (v) u.voice = v;
+          u.rate = S.clamp(settings.voice.rate, 0.5, 1.6);
+          u.volume = S.clamp(settings.voice.volume, 0, 1);
+          u.pitch = 1;
+          u.onend = finish; u.onerror = finish;
+          window.speechSynthesis.speak(u);
+          setTimeout(finish, 5000 + String(text).length * 130);   // never hang forever
+        }catch(e){ finish(); }
+      });
+    }
+
+    // report this screen's voices so the settings page can list them
+    var reportT;
+    function reportVoices(){
+      clearTimeout(reportT);
+      reportT = setTimeout(function(){
+        if (!db) return;
+        loadVoices();
+        var list = voices.filter(function(v){ return /^(pt|en)/i.test(v.lang || ''); })
+                         .map(function(v){ return { name: v.name, lang: v.lang }; });
+        var ua = navigator.userAgent;
+        var browser = /Edg\//.test(ua) ? 'Edge' : /Firefox\//.test(ua) ? 'Firefox' : /Chrome\//.test(ua) ? 'Chrome' : 'outro';
+        db.ref('display').update({ voices: list, browser: browser }).catch(function(){});
+      }, 800);
+    }
+    if ('speechSynthesis' in window){
+      loadVoices();
+      window.speechSynthesis.onvoiceschanged = function(){ loadVoices(); reportVoices(); };
+      reportVoices();
+    }
+
+    // ================= ANNOUNCEMENT QUEUE =================
+    // Calls and messages play one at a time. For a call, the number appears,
+    // blinks red, chimes and is spoken together; the blink lasts the voice.
+    var msgEl = document.getElementById('msg'), msgText = document.getElementById('msgText');
+    var queue = [], busy = false, lastPlayed = { key:'', at:0 };
+    function enqueue(item){ queue.push(item); if (!busy) drain(); }
+    function drain(){
+      busy = true;
+      (function nextItem(){
+        if (!queue.length){ busy = false; return; }
+        var item = queue.shift();
+
+        if (item.kind === 'msg'){
+          var len = item.text.length;
+          msgText.style.fontSize = (len <= 30 ? 8 : len <= 80 ? 5.6 : len <= 150 ? 4.2 : 3.4) + 'vh';
+          msgText.textContent = item.text;
+          msgEl.classList.add('on', 'speaking');
+          chime().then(function(){ return speak(item.text, item.lang); }).then(function(){
+            msgEl.classList.remove('speaking');
+            setTimeout(function(){ msgEl.classList.remove('on'); setTimeout(nextItem, 400); }, 2000);
+          });
+          return;
+        }
+
+        // a senha call — identical call twice within 1.5 s plays once
+        var key = item.id + ':' + item.num + ':' + item.lang, now = Date.now();
+        if (key === lastPlayed.key && (now - lastPlayed.at) < 1500){ nextItem(); return; }
+        lastPlayed = { key:key, at:now };
+
+        var room = roomById(item.id);
+        var name = room ? room.name : '';
+        shown[item.id] = String(item.num);
+        callingId = item.id;
+        var cell = cellsById[item.id];
+        if (cell){ cell.num.textContent = item.num; cell.card.classList.add('calling'); }
+        var text = (item.lang === 'en')
+          ? S.fill(settings.text.en, item.num, S.roomSpokenEn(room))
+          : S.fill(settings.text.pt, item.num, name);
+        chime().then(function(){ return speak(text, item.lang); }).then(function(){
+          callingId = null;
+          var c = cellsById[item.id];
+          if (c) c.card.classList.remove('calling');
+          setTimeout(nextItem, 200);
+        });
+      })();
+    }
+
+    // ---- start overlay (one tap unlocks sound + fullscreen) ----
+    var overlay = document.getElementById('start');
+    document.getElementById('startBtn').addEventListener('click', function(){
+      ensureAudio();
+      if ('speechSynthesis' in window){
+        try{ var w = new SpeechSynthesisUtterance(' '); w.volume = 0; window.speechSynthesis.speak(w); }catch(e){}
+      }
+      var el = document.documentElement;
+      if (el.requestFullscreen) el.requestFullscreen().catch(function(){});
+      requestWake();
+      overlay.classList.add('hidden');
+    });
+
+    applySettings();
+
+    // ================= Firebase live sync =================
+    if (!db){ dateEl.textContent = 'Configurar Firebase — ver guia'; return; }
+
+    db.ref('settings').on('value', function(snap){
+      settings = S.merge(snap.val());
+      applySettings();
+    }, function(err){ console.warn('Settings not readable — check database rules.', err); });
+
+    function clearAllNumbers(){
+      var ids = {};
+      Object.keys(queueData).forEach(function(id){ ids[id] = 1; });
+      settings.rooms.forEach(function(r){ ids[r.id] = 1; });
+      Object.keys(ids).forEach(function(id){
+        if (S.entryN(queueData[id])) db.ref('queue/' + id + '/n').set(0);
+      });
+    }
+
+    db.ref('queue').on('value', function(snap){
+      queueData = snap.val() || {};
+      Object.keys(queueData).forEach(function(id){
+        var e = queueData[id];
+        var n = S.entryN(e);
+        var c = (e && typeof e === 'object') ? (e.call || 0) : 0;
+        var s = n ? String(n) : '';
+        if (!queueReady){ lastCall[id] = c; shown[id] = s; return; }   // first load: silent
+        var prev = lastCall[id] || 0;
+        if (c > prev && n){
+          enqueue({ kind:'call', id:id, num:n, lang:(e.lang === 'en' ? 'en' : 'pt') });
+        } else if (shown[id] !== s){
+          shown[id] = s; paint(id);                                       // silent change
+        }
+        lastCall[id] = c;
+      });
+      if (!queueReady){ queueReady = true; renderGrid(); }
+    });
+
+    // free-text messages (0000 on the control page, or a voice test from settings)
+    var msgReady = false, lastMsgId = null;
+    db.ref('message').on('value', function(snap){
+      var m = snap.val();
+      if (!msgReady){ msgReady = true; lastMsgId = m && m.id; return; }
+      if (m && m.id && m.id !== lastMsgId && m.text){
+        lastMsgId = m.id;
+        enqueue({ kind:'msg', text:String(m.text).slice(0, 300), lang:(m.lang === 'en' ? 'en' : 'pt') });
+      }
+    }, function(){});
+
+    // ---- housekeeping: auto-clear old numbers, daily reset ----
+    var serverOffset = 0, lastReset = null, metaReady = false;
+    db.ref('.info/serverTimeOffset').on('value', function(s){ serverOffset = s.val() || 0; });
+    db.ref('meta/lastReset').on('value', function(s){ lastReset = s.val(); metaReady = true; }, function(){});
+    function housekeeping(){
+      if (!queueReady) return;
+      var now = Date.now() + serverOffset;
+      if (settings.autoClear.on){
+        var limit = S.clamp(settings.autoClear.minutes, 1, 1440) * 60000;
+        Object.keys(queueData).forEach(function(id){
+          var e = queueData[id];
+          if (S.entryN(e) && e.at && (now - e.at) > limit) db.ref('queue/' + id + '/n').set(0);
+        });
+      }
+      if (settings.midnight.on && metaReady){
+        var today = S.today();
+        if (lastReset !== today){
+          if (lastReset) clearAllNumbers();
+          db.ref('meta/lastReset').set(today).catch(function(){});
+        }
+      }
+    }
+    setTimeout(housekeeping, 5000);
+    setInterval(housekeeping, 30000);
+
+    var dot = document.getElementById('dot');
+    db.ref('.info/connected').on('value', function(s){ dot.classList.toggle('off', !s.val()); });
+  })();
+  </script>
+</body>
+</html>

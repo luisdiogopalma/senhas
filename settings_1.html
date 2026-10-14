@@ -1,0 +1,977 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Definições — senhas</title>
+<style>
+  @font-face{font-family:"DIN";font-weight:300;font-style:normal;src:url("DINLig.otf") format("opentype");font-display:swap;}
+  @font-face{font-family:"DIN";font-weight:400;font-style:normal;src:url("DINreg.otf") format("opentype");font-display:swap;}
+  @font-face{font-family:"DIN";font-weight:500;font-style:normal;src:url("DINMed.otf") format("opentype");font-display:swap;}
+  @font-face{font-family:"DIN";font-weight:700;font-style:normal;src:url("DINBol.otf") format("opentype");font-display:swap;}
+  @font-face{font-family:"DIN";font-weight:900;font-style:normal;src:url("DINBla.otf") format("opentype");font-display:swap;}
+
+  :root{
+    --paper:#F6F3EE; --surface:#FFFFFF; --surface-2:#FBF9F5;
+    --line:#E6DFD5; --line-strong:#D5CCBF;
+    --ink:#17110E; --muted:#6B5F58; --placeholder:#A79B8F;
+    --red:#E30613; --red-deep:#AA2A14;
+    --green:#1E7A4C; --green-deep:#16603B;
+    --ease-out:cubic-bezier(0.23, 1, 0.32, 1);
+  }
+  *{ box-sizing:border-box; margin:0; padding:0; }
+  body{
+    background:var(--paper); color:var(--ink); font-family:"DIN", system-ui, sans-serif;
+    min-height:100vh; padding: max(1rem, env(safe-area-inset-top)) 1rem 4rem; line-height:1.45;
+  }
+  .shell{ max-width:720px; margin:0 auto; }
+  header{ display:flex; align-items:center; gap:.75rem; padding:1rem .1rem; border-bottom:3px solid var(--red); margin-bottom:1.4rem; }
+  header .logo{ height:2.6rem; width:auto; }
+  h1{ font-weight:700; font-size:1.35rem; }
+  header .back{ margin-left:auto; color:var(--muted); font-size:.85rem; text-decoration:none; }
+  header .back:hover{ color:var(--ink); text-decoration:underline; }
+
+  /* ---- password gate ---- */
+  .gate{ max-width:360px; margin:12vh auto 0; text-align:center; }
+  .gate .logo{ height:5.5rem; margin-bottom:1.4rem; }
+  .gate h2{ font-weight:700; font-size:1.3rem; margin-bottom:.3rem; }
+  .gate p{ color:var(--muted); font-size:.92rem; margin-bottom:1.1rem; }
+  .gate form{ display:grid; gap:.6rem; }
+  .gate .err{ color:var(--red-deep); font-weight:500; font-size:.88rem; min-height:1.3em; }
+
+  /* ---- sections ---- */
+  section{ background:var(--surface); border:1px solid var(--line); border-radius:18px; padding:1.25rem 1.3rem 1.35rem; margin-bottom:1rem;
+    box-shadow: 0 8px 22px -20px rgba(23,17,14,.35); }
+  section h2{ font-weight:700; font-size:1.1rem; margin-bottom:.2rem; }
+  section > .desc{ color:var(--muted); font-size:.88rem; margin-bottom:1rem; }
+  .field{ display:flex; align-items:center; justify-content:space-between; gap:1rem; padding:.7rem 0; border-top:1px solid var(--line); }
+  .field:first-of-type{ border-top:0; }
+  .field .lbl{ font-weight:500; }
+  .field .lbl small{ display:block; color:var(--muted); font-weight:400; font-size:.8rem; }
+  .field.stack{ flex-direction:column; align-items:stretch; gap:.45rem; }
+  .field.disabled{ opacity:.45; pointer-events:none; }
+
+  input[type=text], input[type=password], input[type=number], select, textarea{
+    font-family:inherit; font-size:1rem; color:var(--ink); background:var(--surface-2);
+    border:1px solid var(--line-strong); border-radius:10px; padding:.6rem .75rem; width:100%;
+  }
+  input:focus, select:focus, textarea:focus{ outline:3px solid rgba(227,6,19,.28); outline-offset:1px; border-color:var(--red); }
+  input[type=number]{ width:6.5rem; }
+  select{ cursor:pointer; }
+  input[type=range]{ width:100%; accent-color:var(--red); }
+  .range-row{ display:flex; align-items:center; gap:.8rem; }
+  .range-row output{ min-width:3.6rem; text-align:right; font-weight:700; font-variant-numeric:tabular-nums; }
+
+  .btn{ font-family:inherit; font-weight:700; font-size:.95rem; border-radius:10px; padding:.62rem 1rem; cursor:pointer;
+    border:1px solid var(--line-strong); background:var(--surface); color:var(--ink);
+    transition: background .15s ease, border-color .15s ease, transform .1s var(--ease-out); white-space:nowrap; }
+  .btn:active{ transform:scale(.97); }
+  .btn:focus-visible{ outline:3px solid var(--red); outline-offset:2px; }
+  .btn.primary{ background:var(--red); border-color:var(--red); color:#fff; }
+  .btn.primary:hover{ background:var(--red-deep); border-color:var(--red-deep); }
+  .btn.danger{ color:var(--red-deep); border-color:rgba(227,6,19,.4); background:transparent; }
+  .btn.danger:hover{ background:rgba(227,6,19,.07); }
+  .btn.quiet:hover{ background:var(--surface-2); border-color:var(--ink); }
+  .btns{ display:flex; flex-wrap:wrap; gap:.5rem; }
+
+  /* switch */
+  .switch{ position:relative; display:inline-block; width:50px; height:30px; flex:0 0 auto; }
+  .switch input{ position:absolute; opacity:0; width:100%; height:100%; margin:0; cursor:pointer; z-index:1; }
+  .switch span{ position:absolute; inset:0; background:var(--line-strong); border-radius:999px; transition: background .18s ease; }
+  .switch span::after{ content:""; position:absolute; top:3px; left:3px; width:24px; height:24px; border-radius:50%; background:#fff;
+    box-shadow:0 1px 3px rgba(0,0,0,.25); transition: transform .2s var(--ease-out); }
+  .switch input:checked + span{ background:var(--green); }
+  .switch input:checked + span::after{ transform:translateX(20px); }
+  .switch input:focus-visible + span{ outline:3px solid var(--red); outline-offset:2px; }
+
+  /* segmented control */
+  .seg{ display:inline-flex; background:var(--surface-2); border:1px solid var(--line-strong); border-radius:10px; padding:3px; }
+  .seg button{ font-family:inherit; font-weight:500; font-size:.92rem; border:0; background:transparent; color:var(--muted);
+    padding:.45rem .85rem; border-radius:7px; cursor:pointer; }
+  .seg button.on{ background:var(--surface); color:var(--ink); font-weight:700; box-shadow:0 1px 3px rgba(23,17,14,.18); }
+
+  /* rooms */
+  .room-list{ display:grid; gap:.5rem; margin-bottom:.9rem; }
+  .room{ display:flex; align-items:center; gap:.5rem; padding:.45rem .5rem; border:1px solid var(--line); border-radius:12px; background:var(--surface-2); }
+  .room.off{ opacity:.6; }
+  .room input[type=text]{ flex:1 1 0; min-width:0; background:var(--surface); }
+  .room input.en{ color:var(--muted); }
+  .room input.en::placeholder{ color:var(--placeholder); font-style:italic; }
+  .room-head{ display:flex; gap:.5rem; padding:0 .5rem .3rem calc(.5rem + 2 * 2.2rem + 1rem); font-size:.75rem;
+    font-weight:700; text-transform:uppercase; letter-spacing:.06em; color:var(--muted); }
+  .room-head span{ flex:1 1 0; }
+  .room-head span:last-child{ margin-right:calc(50px + 2.2rem + 1rem); }
+  .icon-btn{ width:2.2rem; height:2.2rem; flex:0 0 auto; display:flex; align-items:center; justify-content:center;
+    border-radius:8px; border:1px solid var(--line); background:var(--surface); color:var(--muted); cursor:pointer; font-size:1rem; }
+  .icon-btn:hover{ color:var(--ink); border-color:var(--line-strong); }
+  .icon-btn:disabled{ opacity:.3; cursor:default; }
+  .icon-btn.del:hover{ color:var(--red-deep); border-color:rgba(227,6,19,.45); }
+  .add-row{ display:flex; gap:.5rem; }
+
+  /* preview */
+  .preview{ width:100%; aspect-ratio:16/9; background:var(--paper); border:1px solid var(--line-strong); border-radius:12px; overflow:hidden;
+    display:flex; flex-direction:column; margin-top:.4rem; }
+  .preview .ph{ height:9%; background:var(--surface); border-bottom:2px solid var(--red); flex:0 0 auto; }
+  .preview .pg{ flex:1 1 auto; min-height:0; display:flex; flex-direction:column; gap:1.2%; padding:1.8% 3%; }
+  .preview .pr{ flex:1 1 0; min-height:0; display:flex; gap:1.1%; }
+  .preview .pt{ flex:1 1 0; min-width:0; background:var(--surface); border:1px solid var(--line); border-radius:6px;
+    display:flex; align-items:center; justify-content:center; font-size:clamp(8px, 1.6vw, 11px); font-weight:700; color:var(--muted);
+    text-align:center; padding:2px; overflow:hidden; }
+  .preview .pt.logo{ color:var(--red); }
+  .preview .pstage{ flex:1 1 auto; min-height:0; display:flex; flex-direction:column; gap:1.2%; padding:1.8% 3%; }
+  .preview .pstage[data-pos="top"]{ flex-direction:column-reverse; }
+  .preview .pstage[data-pos="left"]{ flex-direction:row-reverse; }
+  .preview .pstage[data-pos="right"]{ flex-direction:row; }
+  .preview .pstage .pg{ padding:0; }
+  .preview .pv{ flex:0 0 auto; border:1.5px dashed var(--line-strong); border-radius:6px;
+    display:flex; align-items:center; justify-content:center; overflow:hidden; position:relative;
+    font-size:clamp(8px, 1.5vw, 11px); font-weight:700; color:var(--muted); }
+  .preview .pv img{ max-width:100%; max-height:100%; object-fit:contain; border-radius:3px; }
+
+  .files-head{ display:flex; align-items:center; justify-content:space-between; gap:1rem; }
+  .files-status{ font-size:.84rem; color:var(--muted); }
+  .files-status.warn{ color:var(--red-deep); background:rgba(227,6,19,.06); border:1px solid rgba(227,6,19,.3);
+    border-radius:10px; padding:.6rem .75rem; }
+  .file-list{ display:grid; gap:.45rem; }
+  .file{ display:flex; align-items:center; gap:.55rem; padding:.45rem .5rem; border:1px solid var(--line); border-radius:12px; background:var(--surface-2); }
+  .file.off{ opacity:.55; }
+  .file .tb{ width:76px; height:46px; flex:0 0 auto; border-radius:7px; background:#EFE8DF; overflow:hidden;
+    display:flex; align-items:center; justify-content:center; position:relative; }
+  .file .tb img, .file .tb video{ max-width:100%; max-height:100%; object-fit:contain; display:block; }
+  .file .tb .play{ position:absolute; inset:auto auto 3px 4px; font-size:.62rem; font-weight:700; color:#fff;
+    background:rgba(23,17,14,.7); border-radius:4px; padding:0 .3rem; }
+  .file .info{ flex:1 1 auto; min-width:0; }
+  .file .nm{ font-weight:500; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .file .meta{ font-size:.76rem; color:var(--muted); }
+  .file.bad .tb{ background:rgba(227,6,19,.08); }
+  .file.bad .meta{ color:var(--red-deep); font-weight:700; }
+  .file-empty{ font-size:.88rem; color:var(--muted); padding:.8rem; border:1px dashed var(--line-strong); border-radius:12px; text-align:center; }
+  .thumbs{ display:flex; flex-wrap:wrap; gap:.45rem; }
+  .thumb{ width:84px; text-align:center; font-size:.68rem; color:var(--muted); }
+  .thumb .box{ width:84px; height:56px; border:1px solid var(--line); border-radius:8px; background:var(--surface-2);
+    display:flex; align-items:center; justify-content:center; overflow:hidden; margin-bottom:.2rem; }
+  .thumb img{ max-width:100%; max-height:100%; object-fit:contain; }
+  .thumb.bad .box{ border-color:rgba(227,6,19,.5); color:var(--red-deep); font-size:.7rem; font-weight:700; }
+  .thumb .nm{ display:block; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  textarea{ min-height:6.5rem; resize:vertical; line-height:1.5; }
+  .size-hint{ background:var(--surface-2); border:1px solid var(--line); border-radius:10px; padding:.7rem .85rem;
+    font-size:.84rem; color:var(--muted); line-height:1.55; }
+  .size-hint b{ color:var(--ink); font-variant-numeric:tabular-nums; }
+  .size-hint .k{ display:grid; grid-template-columns:auto 1fr; gap:.15rem .9rem; margin:.3rem 0 .45rem; }
+
+  .voice-info{ font-size:.86rem; color:var(--muted); background:var(--surface-2); border:1px solid var(--line); border-radius:10px; padding:.7rem .85rem; }
+  .voice-info b{ color:var(--ink); }
+  .hint{ color:var(--muted); font-size:.82rem; }
+  code{ font-family: ui-monospace, Menlo, Consolas, monospace; font-size:.85em; background:#EFE7DE; padding:.05em .35em; border-radius:4px; }
+
+  .banner{ display:none; background:rgba(227,6,19,.07); border:1px solid rgba(227,6,19,.4); color:var(--red-deep);
+    border-radius:12px; padding:.9rem 1rem; margin-bottom:1rem; font-size:.9rem; }
+  .banner.on{ display:block; }
+  .banner pre{ background:#241416; color:#F3E7E5; border-radius:8px; padding:.7rem .8rem; margin-top:.6rem; font-size:.78rem; overflow:auto; }
+
+  .saved{ position:fixed; left:50%; bottom:1.2rem; transform:translateX(-50%) translateY(16px); opacity:0;
+    background:var(--ink); color:#fff; font-weight:500; font-size:.9rem; padding:.55rem 1rem; border-radius:10px;
+    transition: opacity .25s ease, transform .25s var(--ease-out); pointer-events:none; z-index:20; }
+  .saved.on{ opacity:1; transform:translateX(-50%) translateY(0); }
+  .saved.err{ background:var(--red-deep); }
+
+  [hidden]{ display:none !important; }
+  @media (max-width:520px){
+    .field{ flex-wrap:wrap; }
+    .room{ flex-wrap:wrap; }
+    .room input[type=text]{ flex-basis:100%; order:-1; }
+    .room-head{ display:none; }
+  }
+  @media (prefers-reduced-motion: reduce){ .btn:active{ transform:none; } .switch span::after{ transition:none; } }
+</style>
+</head>
+<body>
+<div class="shell">
+  <header>
+    <img class="logo" src="logo.svg" alt="G.A.T. CheckpointLX">
+    <h1>Definições</h1>
+    <a class="back" href="control.html">← Controlo</a>
+  </header>
+
+  <div class="banner" id="rulesBanner">
+    <b>A base de dados recusou o pedido.</b> As regras do Firebase ainda só permitem a fila de senhas.
+    Na consola do Firebase, abre <b>Realtime Database → Regras</b>, substitui tudo por isto e carrega em <b>Publicar</b>:
+<pre>{
+  "rules": {
+    "queue":    { ".read": true, ".write": true },
+    "settings": { ".read": true, ".write": true },
+    "message":  { ".read": true, ".write": true },
+    "display":  { ".read": true, ".write": true },
+    "meta":     { ".read": true, ".write": true }
+  }
+}</pre>
+  </div>
+
+  <!-- ===== password gate ===== -->
+  <div class="gate" id="gate">
+    <img class="logo" src="logo.svg" alt="">
+    <div id="gateLoading"><p>A carregar…</p></div>
+    <div id="gateLogin" hidden>
+      <h2>Definições protegidas</h2>
+      <p>Introduza a palavra-passe para continuar.</p>
+      <form id="loginForm" autocomplete="off">
+        <input type="password" id="loginPw" placeholder="Palavra-passe" autocomplete="current-password">
+        <button class="btn primary" type="submit">Entrar</button>
+        <div class="err" id="loginErr"></div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ===== settings ===== -->
+  <div id="app" hidden>
+
+    <section>
+      <h2>Gabinetes</h2>
+      <p class="desc">Os gabinetes desligados desaparecem do ecrã e da página de controlo, mas não são apagados.
+        O <b>nome em inglês</b> é opcional e só é usado pela voz em inglês — o ecrã mostra sempre o nome normal. Se ficar vazio, a voz diz o que aparece a cinzento (ex.: "Gabinete 3" → "Room 3").</p>
+      <div class="room-head"><span>Nome no ecrã</span><span>Dito em inglês</span></div>
+      <div class="room-list" id="roomList"></div>
+      <div class="add-row">
+        <input type="text" id="newRoom" placeholder="Nome do novo gabinete" maxlength="40">
+        <button class="btn quiet" id="addRoom">Adicionar</button>
+      </div>
+    </section>
+
+    <section>
+      <h2>Disposição do ecrã</h2>
+      <p class="desc">Com menos gabinetes ativos, os quadrados ficam maiores e mais fáceis de ler ao longe.</p>
+      <div class="field">
+        <span class="lbl">Grelha<small>Automática ajusta-se ao número de gabinetes ativos</small></span>
+        <div class="seg" id="gridSeg">
+          <button data-v="auto">Automática</button>
+          <button data-v="fixed">Colunas fixas</button>
+        </div>
+      </div>
+      <div class="field" id="colsField">
+        <span class="lbl">Número de colunas</span>
+        <select id="gridCols" style="width:6.5rem">
+          <option>1</option><option>2</option><option>3</option><option>4</option><option>5</option><option>6</option>
+        </select>
+      </div>
+      <div class="field">
+        <span class="lbl">Mostrar o logótipo<small>Desligado, o primeiro gabinete ocupa o lugar dele</small></span>
+        <label class="switch"><input type="checkbox" id="showLogo"><span></span></label>
+      </div>
+      <div class="field stack">
+        <span class="lbl">Pré-visualização</span>
+        <div class="preview" id="preview"></div>
+      </div>
+    </section>
+
+    <section>
+      <h2>Vídeo e imagens</h2>
+      <p class="desc">Carregue vídeos e imagens para a pasta <code>media</code> do site — aparecem aqui sozinhos. Ligue os que quer mostrar e ordene-os com as setas.
+        Passam um a um: cada imagem fica os segundos que escolher, cada vídeo passa até ao fim. Um único ficheiro fica fixo (um vídeo sozinho repete).</p>
+      <div class="field">
+        <span class="lbl">Mostrar vídeo e imagens</span>
+        <label class="switch"><input type="checkbox" id="mediaOn"><span></span></label>
+      </div>
+      <div class="field stack media-dep">
+        <div class="files-head">
+          <span class="lbl">Ficheiros</span>
+          <button class="btn quiet" id="refreshMedia">↻ Atualizar</button>
+        </div>
+        <div class="files-status" id="filesStatus"></div>
+        <div class="file-list" id="fileList"></div>
+      </div>
+      <div class="field media-dep" id="secondsField">
+        <span class="lbl">Segundos por imagem<small>Os vídeos passam sempre até ao fim</small></span>
+        <input type="number" id="mediaSeconds" min="2" max="600" step="1">
+      </div>
+      <div class="field media-dep">
+        <span class="lbl">Posição</span>
+        <div class="seg" id="mediaPos">
+          <button data-v="bottom">Em baixo</button>
+          <button data-v="top">Em cima</button>
+          <button data-v="left">Esquerda</button>
+          <button data-v="right">Direita</button>
+        </div>
+      </div>
+      <div class="field stack media-dep">
+        <span class="lbl" id="mediaSizeLbl">Altura</span>
+        <div class="range-row"><input type="range" id="mediaSize" min="15" max="60" step="1"><output id="mediaSizeOut"></output></div>
+        <div class="size-hint" id="sizeHint"></div>
+      </div>
+    </section>
+
+    <section>
+      <h2>Voz</h2>
+      <p class="desc">As vozes disponíveis dependem do browser do computador que mostra o ecrã.</p>
+      <div class="voice-info" id="voiceInfo">À espera que o ecrã esteja aberto…</div>
+      <div class="field" style="margin-top:.4rem">
+        <span class="lbl">Ler as chamadas em voz alta</span>
+        <label class="switch"><input type="checkbox" id="speakOn"><span></span></label>
+      </div>
+      <div class="field stack">
+        <span class="lbl">Voz em português</span>
+        <select id="voicePt"></select>
+      </div>
+      <div class="field stack">
+        <span class="lbl">Voz em inglês</span>
+        <select id="voiceEn"></select>
+      </div>
+      <div class="field stack">
+        <span class="lbl">Velocidade</span>
+        <div class="range-row"><input type="range" id="voiceRate" min="0.6" max="1.4" step="0.05"><output id="voiceRateOut"></output></div>
+      </div>
+      <div class="field stack">
+        <span class="lbl">Volume da voz</span>
+        <div class="range-row"><input type="range" id="voiceVol" min="0" max="100" step="5"><output id="voiceVolOut"></output></div>
+      </div>
+      <div class="field">
+        <span class="lbl">Testar no ecrã<small>Envia uma chamada de exemplo para a sala de espera</small></span>
+        <div class="btns">
+          <button class="btn quiet" id="testPt">Testar PT</button>
+          <button class="btn quiet" id="testEn">Testar EN</button>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <h2>Anúncio</h2>
+      <p class="desc">Use <code>{n}</code> para o número da senha e <code>{room}</code> para o gabinete.</p>
+      <div class="field stack">
+        <span class="lbl">Frase em português</span>
+        <input type="text" id="textPt" maxlength="120">
+      </div>
+      <div class="field stack">
+        <span class="lbl">Frase em inglês<small>Usa o nome em inglês de cada gabinete (secção Gabinetes); sem ele, "Gabinete 3" é lido "Room 3"</small></span>
+        <input type="text" id="textEn" maxlength="120">
+      </div>
+      <div class="field">
+        <span class="lbl">Tocar som antes de cada chamada</span>
+        <label class="switch"><input type="checkbox" id="chimeOn"><span></span></label>
+      </div>
+      <div class="field" id="chimeTypeField">
+        <span class="lbl">Som</span>
+        <div class="btns" style="flex-wrap:nowrap">
+          <select id="chimeType" style="width:13rem"></select>
+          <button class="btn quiet" id="chimePreview" title="Ouvir neste computador">▶ Ouvir</button>
+        </div>
+      </div>
+      <div class="field stack" id="chimeVolField">
+        <span class="lbl">Volume do som</span>
+        <div class="range-row"><input type="range" id="chimeVol" min="0" max="100" step="5"><output id="chimeVolOut"></output></div>
+      </div>
+    </section>
+
+    <section>
+      <h2>Limpeza automática</h2>
+      <p class="desc">Evita que senhas antigas fiquem no ecrã a tarde toda.</p>
+      <div class="field">
+        <span class="lbl">Apagar cada senha depois de algum tempo</span>
+        <label class="switch"><input type="checkbox" id="autoClearOn"><span></span></label>
+      </div>
+      <div class="field" id="autoClearMinField">
+        <span class="lbl">Minutos até apagar</span>
+        <input type="number" id="autoClearMin" min="1" max="720" step="1">
+      </div>
+      <div class="field">
+        <span class="lbl">Limpar tudo à meia-noite<small>Cada dia começa com o ecrã vazio</small></span>
+        <label class="switch"><input type="checkbox" id="midnightOn"><span></span></label>
+      </div>
+      <div class="field">
+        <span class="lbl">Limpar agora</span>
+        <button class="btn danger" id="clearNow">Limpar todas as senhas</button>
+      </div>
+      <p class="hint">A limpeza é feita pelo computador do ecrã, por isso só acontece enquanto o ecrã estiver aberto. Se estiver desligado à meia-noite, limpa assim que voltar a ser aberto.</p>
+    </section>
+
+  </div>
+</div>
+<div class="saved" id="saved">Guardado ✓</div>
+
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+<script src="config.js"></script>
+<script src="shared.js"></script>
+<script>
+(function(){
+  var S = window.Senhas;
+  var db = S.db();
+  var $ = function(id){ return document.getElementById(id); };
+
+  var cfg = S.merge(null);   // current settings
+  var displayInfo = {};      // { voices, browser } reported by the display
+  var queueData = {};
+  var unlocked = false;
+
+  /* ---------- SHA-256 (works on any page, no secure context needed) ---------- */
+  function sha256(str){
+    var ascii = unescape(encodeURIComponent(str));
+    function rr(v, a){ return (v >>> a) | (v << (32 - a)); }
+    var maxWord = Math.pow(2, 32), i, j, result = '', words = [], bitLen = ascii.length * 8;
+    var hash = [], k = [], pc = 0, isComp = {};
+    for (var cand = 2; pc < 64; cand++){
+      if (!isComp[cand]){
+        for (i = 0; i < 313; i += cand) isComp[i] = cand;
+        hash[pc] = (Math.pow(cand, .5) * maxWord) | 0;
+        k[pc++] = (Math.pow(cand, 1/3) * maxWord) | 0;
+      }
+    }
+    hash = hash.slice(0, 8);
+    ascii += '\x80';
+    while (ascii.length % 64 - 56) ascii += '\x00';
+    for (i = 0; i < ascii.length; i++){ j = ascii.charCodeAt(i); words[i >> 2] |= j << ((3 - i) % 4) * 8; }
+    words[words.length] = ((bitLen / maxWord) | 0);
+    words[words.length] = bitLen;
+    for (j = 0; j < words.length;){
+      var w = words.slice(j, j += 16), old = hash;
+      hash = hash.slice(0, 8);
+      for (i = 0; i < 64; i++){
+        var w15 = w[i - 15], w2 = w[i - 2], a = hash[0], e = hash[4];
+        var t1 = hash[7] + (rr(e, 6) ^ rr(e, 11) ^ rr(e, 25)) + ((e & hash[5]) ^ (~e & hash[6])) + k[i]
+          + (w[i] = (i < 16) ? w[i] : (w[i - 16] + (rr(w15, 7) ^ rr(w15, 18) ^ (w15 >>> 3)) + w[i - 7] + (rr(w2, 17) ^ rr(w2, 19) ^ (w2 >>> 10))) | 0);
+        var t2 = (rr(a, 2) ^ rr(a, 13) ^ rr(a, 22)) + ((a & hash[1]) ^ (a & hash[2]) ^ (hash[1] & hash[2]));
+        hash = [(t1 + t2) | 0].concat(hash);
+        hash[4] = (hash[4] + t1) | 0;
+      }
+      for (i = 0; i < 8; i++) hash[i] = (hash[i] + old[i]) | 0;
+    }
+    for (i = 0; i < 8; i++) for (j = 3; j + 1; j--){ var b = (hash[i] >> (j * 8)) & 255; result += (b < 16 ? '0' : '') + b.toString(16); }
+    return result;
+  }
+
+  /* ---------- saving ---------- */
+  var savedEl = $('saved'), savedT;
+  function flash(text, isErr){
+    savedEl.textContent = text; savedEl.classList.toggle('err', !!isErr); savedEl.classList.add('on');
+    clearTimeout(savedT); savedT = setTimeout(function(){ savedEl.classList.remove('on'); }, 1600);
+  }
+  function fail(err){
+    console.error(err);
+    if (err && String(err.code || err.message || '').toLowerCase().indexOf('permission') !== -1) $('rulesBanner').classList.add('on');
+    flash('Não foi guardado', true);
+  }
+  function put(path, value){
+    if (!db) return;
+    return db.ref('settings/' + path).set(value).then(function(){ flash('Guardado ✓'); }).catch(fail);
+  }
+
+  /* ---------- gate (fixed password) ---------- */
+  var PW_HASH = '2a060283a2447c0c0f80fcaff69d04906789e28fd01f5b23c2661ff4bbc6f37e';            // SHA-256 of 'gat-senhas:' + the password
+  function pwOk(pw){ return sha256('gat-senhas:' + pw) === PW_HASH; }
+  function showGate(which){
+    $('gateLoading').hidden = which !== 'loading';
+    $('gateLogin').hidden = which !== 'login';
+    if (which === 'login') setTimeout(function(){ $('loginPw').focus(); }, 30);
+  }
+  function unlock(){
+    unlocked = true;
+    try{ sessionStorage.setItem('senhas-settings-ok', PW_HASH); }catch(e){}
+    $('gate').hidden = true; $('app').hidden = false;
+    renderAll(true);
+    detect();
+  }
+  $('loginForm').addEventListener('submit', function(e){
+    e.preventDefault();
+    if (pwOk($('loginPw').value)){ $('loginErr').textContent = ''; unlock(); }
+    else { $('loginErr').textContent = 'Palavra-passe incorreta.'; $('loginPw').select(); }
+  });
+
+  /* ---------- rooms ---------- */
+  function saveRooms(){ return put('rooms', cfg.rooms.map(function(r){ return { id:r.id, name:r.name, nameEn:r.nameEn || '', active:r.active }; })); }
+  function idx(id){ for (var k = 0; k < cfg.rooms.length; k++){ if (cfg.rooms[k].id === id) return k; } return -1; }
+  function renderRooms(){
+    var list = $('roomList');
+    var ae = document.activeElement;
+    if (list.contains(ae) && ae.tagName === 'INPUT' && ae.type === 'text') return;  // don't disturb typing
+    list.innerHTML = '';
+    cfg.rooms.forEach(function(r, i){
+      var id = r.id;
+      var row = document.createElement('div');
+      row.className = 'room' + (r.active ? '' : ' off');
+
+      var up = document.createElement('button'); up.className = 'icon-btn'; up.textContent = '↑'; up.title = 'Subir';
+      up.disabled = i === 0;
+      up.addEventListener('click', function(){ move(idx(id), -1); });
+      var down = document.createElement('button'); down.className = 'icon-btn'; down.textContent = '↓'; down.title = 'Descer';
+      down.disabled = i === cfg.rooms.length - 1;
+      down.addEventListener('click', function(){ move(idx(id), 1); });
+
+      var name = document.createElement('input'); name.type = 'text'; name.value = r.name; name.maxLength = 40;
+      name.setAttribute('aria-label', 'Nome do gabinete');
+      var en = document.createElement('input'); en.type = 'text'; en.className = 'en'; en.value = r.nameEn || '';
+      en.maxLength = 40; en.placeholder = S.roomEn(r.name);
+      en.title = 'Nome dito pela voz em inglês (opcional)';
+      en.setAttribute('aria-label', 'Nome em inglês');
+      name.addEventListener('change', function(){
+        var k = idx(id); if (k < 0) return;
+        var v = name.value.trim();
+        if (!v){ name.value = cfg.rooms[k].name; return; }
+        cfg.rooms[k].name = v; en.placeholder = S.roomEn(v); saveRooms(); renderPreview();
+      });
+      name.addEventListener('keydown', function(e){ if (e.key === 'Enter') name.blur(); });
+      en.addEventListener('change', function(){
+        var k = idx(id); if (k < 0) return;
+        cfg.rooms[k].nameEn = en.value.trim(); en.value = cfg.rooms[k].nameEn; saveRooms();
+      });
+      en.addEventListener('keydown', function(e){ if (e.key === 'Enter') en.blur(); });
+
+      var sw = document.createElement('label'); sw.className = 'switch'; sw.title = r.active ? 'Ativo' : 'Desligado';
+      var cb = document.createElement('input'); cb.type = 'checkbox'; cb.checked = r.active;
+      cb.setAttribute('aria-label', 'Gabinete ativo');
+      cb.addEventListener('change', function(){
+        var k = idx(id); if (k < 0) return;
+        cfg.rooms[k].active = cb.checked; row.classList.toggle('off', !cb.checked);
+        saveRooms(); renderPreview();
+      });
+      sw.appendChild(cb); sw.appendChild(document.createElement('span'));
+
+      var del = document.createElement('button'); del.className = 'icon-btn del'; del.textContent = '✕'; del.title = 'Apagar gabinete';
+      del.disabled = cfg.rooms.length <= 1;
+      del.addEventListener('click', function(){
+        var k = idx(id); if (k < 0 || cfg.rooms.length <= 1) return;
+        if (!confirm('Apagar "' + cfg.rooms[k].name + '"? Para o esconder apenas, use o interruptor.')) return;
+        cfg.rooms.splice(k, 1);
+        saveRooms();
+        if (db) db.ref('queue/' + id).remove().catch(function(){});
+        renderRooms(); renderPreview();
+      });
+
+      row.appendChild(up); row.appendChild(down); row.appendChild(name); row.appendChild(en); row.appendChild(sw); row.appendChild(del);
+      list.appendChild(row);
+    });
+  }
+  function move(i, dir){
+    var j = i + dir;
+    if (j < 0 || j >= cfg.rooms.length) return;
+    var t = cfg.rooms[i]; cfg.rooms[i] = cfg.rooms[j]; cfg.rooms[j] = t;
+    saveRooms(); renderRooms(); renderPreview();
+  }
+  function addRoom(){
+    var v = $('newRoom').value.trim() || ('Gabinete ' + (cfg.rooms.length + 1));
+    cfg.rooms.push({ id: 'g' + Date.now().toString(36), name: v, active: true });
+    $('newRoom').value = '';
+    saveRooms(); renderRooms(); renderPreview();
+  }
+  $('addRoom').addEventListener('click', addRoom);
+  $('newRoom').addEventListener('keydown', function(e){ if (e.key === 'Enter') addRoom(); });
+
+  /* ---------- layout preview ---------- */
+  function renderPreview(){
+    var pv = $('preview');
+    pv.innerHTML = '';
+    var head = document.createElement('div'); head.className = 'ph'; pv.appendChild(head);
+    var st = document.createElement('div'); st.className = 'pstage'; st.dataset.pos = cfg.video.position; pv.appendChild(st);
+    var g = document.createElement('div'); g.className = 'pg'; st.appendChild(g);
+    var f0 = cfg.video.on ? firstOn() : null;
+    if (f0){
+      var m = document.createElement('div'); m.className = 'pv';
+      if (S.isSide(cfg.video.position)) m.style.width = S.clamp(cfg.video.width, 10, 70) + '%';
+      else m.style.height = S.clamp(cfg.video.size, 10, 70) + '%';
+      if (S.isImage(f0.file)){
+        var im = document.createElement('img'); im.src = S.url(f0.file); im.alt = '';
+        im.onerror = function(){ m.textContent = 'Imagem'; };
+        m.appendChild(im);
+      } else m.textContent = '▶ Vídeo';
+      st.appendChild(m);
+    }
+    var tiles = [];
+    if (cfg.showLogo) tiles.push({ logo:true, name:'GAT' });
+    cfg.rooms.forEach(function(r){ if (r.active) tiles.push(r); });
+    if (!tiles.length) return;
+    // measure after layout so auto mode matches the real screen's proportions
+    requestAnimationFrame(function(){
+      var W = g.clientWidth * 0.94, H = g.clientHeight * 0.95;
+      var rows = S.layoutRows(cfg, tiles.length, W, H, W * 0.011);
+      var idx = 0;
+      rows.forEach(function(count){
+        var row = document.createElement('div'); row.className = 'pr';
+        for (var k = 0; k < count; k++){
+          var t = tiles[idx++];
+          var tile = document.createElement('div'); tile.className = 'pt' + (t.logo ? ' logo' : '');
+          tile.textContent = t.name;
+          row.appendChild(tile);
+        }
+        g.appendChild(row);
+      });
+    });
+  }
+  window.addEventListener('resize', function(){ if (unlocked) renderPreview(); });
+
+  /* ---------- generic control wiring ---------- */
+  function setIfIdle(el, prop, value){ if (document.activeElement !== el) el[prop] = value; }
+  function bindSwitch(id, path, after){
+    $(id).addEventListener('change', function(){ var v = $(id).checked; setPath(path, v); put(path, v); if (after) after(v); renderAll(); });
+  }
+  function setPath(path, v){
+    var parts = path.split('/'), o = cfg;
+    for (var i = 0; i < parts.length - 1; i++) o = o[parts[i]];
+    o[parts[parts.length - 1]] = v;
+  }
+
+  // grid
+  $('gridSeg').querySelectorAll('button').forEach(function(b){
+    b.addEventListener('click', function(){ cfg.grid.mode = b.dataset.v; put('grid/mode', cfg.grid.mode); renderAll(); });
+  });
+  $('gridCols').addEventListener('change', function(){ cfg.grid.cols = parseInt($('gridCols').value, 10); put('grid/cols', cfg.grid.cols); renderPreview(); });
+  bindSwitch('showLogo', 'showLogo');
+
+  // ---------- media (playlist from the media/ folder) ----------
+  bindSwitch('mediaOn', 'video/on');
+  $('mediaPos').querySelectorAll('button').forEach(function(b){
+    b.addEventListener('click', function(){ cfg.video.position = b.dataset.v; put('video/position', cfg.video.position); renderAll(); });
+  });
+  $('mediaSeconds').addEventListener('change', function(){
+    var v = Math.round(S.clamp($('mediaSeconds').value, 2, 600));
+    $('mediaSeconds').value = v; cfg.video.seconds = v; put('video/seconds', v);
+  });
+  function sizeKey(){ return S.isSide(cfg.video.position) ? 'width' : 'size'; }
+  $('mediaSize').addEventListener('input', function(){
+    cfg.video[sizeKey()] = +$('mediaSize').value;           // live hint while dragging
+    $('mediaSizeOut').textContent = $('mediaSize').value + '%';
+    renderSizeHint();
+  });
+  $('mediaSize').addEventListener('change', function(){
+    var k = sizeKey(); cfg.video[k] = +$('mediaSize').value; put('video/' + k, cfg.video[k]); renderPreview();
+  });
+
+  var detected = null;        // [{ file, size }] from the folder, or null if not known
+  var detectState = { st:'idle' };
+  var dims = {};              // file -> { w, h, dur } once its thumbnail loads
+  var thumbState = {};        // file -> 'ok' | 'bad'
+  var thumbs = {};            // file -> cached thumbnail element
+
+  function fmtSize(b){ if (!b && b !== 0) return ''; return b >= 1048576 ? (b / 1048576).toFixed(1).replace('.', ',') + ' MB' : Math.max(1, Math.round(b / 1024)) + ' KB'; }
+  function fmtDur(s){ s = Math.round(s || 0); return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0'); }
+  // missing = its thumbnail failed, or the folder was read and the file isn't in it
+  function isMissing(file){
+    if (thumbState[file] === 'bad') return true;
+    if (detected && file.indexOf(S.MEDIA_FOLDER + '/') === 0){
+      for (var i = 0; i < detected.length; i++){ if (detected[i].file === file) return false; }
+      return true;
+    }
+    return false;
+  }
+  function sizeOf(file){ if (!detected) return null; for (var i = 0; i < detected.length; i++){ if (detected[i].file === file) return detected[i].size; } return null; }
+
+  // saved playlist first (keeps your order), then any new files found in the folder, switched off
+  function mergedList(){
+    var list = cfg.video.playlist.map(function(x){ return { file:x.file, on:!!x.on }; });
+    if (detected){
+      var have = {}; list.forEach(function(x){ have[x.file] = 1; });
+      detected.forEach(function(f){ if (!have[f.file]) list.push({ file:f.file, on:false }); });
+    }
+    return list;
+  }
+  function savePlaylist(list){
+    cfg.video.playlist = list.map(function(x){ return { file:x.file, on:!!x.on }; });
+    put('video/playlist', cfg.video.playlist);
+    renderFiles(); renderPreview(); renderSizeHint();
+  }
+
+  function thumbFor(file){
+    if (thumbs[file]) return thumbs[file];
+    var box = document.createElement('div'); box.className = 'tb';
+    var src = S.url(file);
+    if (S.isVideo(file)){
+      var v = document.createElement('video'); v.muted = true; v.preload = 'metadata'; v.playsInline = true;
+      v.onloadedmetadata = function(){ dims[file] = { w:v.videoWidth, h:v.videoHeight, dur:v.duration }; thumbState[file] = 'ok'; renderFiles(); renderSizeHint(); renderPreview(); };
+      v.onerror = function(){ thumbState[file] = 'bad'; renderFiles(); };
+      v.src = src + '#t=0.5';
+      box.appendChild(v);
+      var tag = document.createElement('span'); tag.className = 'play'; tag.textContent = '▶'; box.appendChild(tag);
+    } else {
+      var im = document.createElement('img'); im.alt = '';
+      im.onload = function(){ dims[file] = { w:im.naturalWidth, h:im.naturalHeight }; thumbState[file] = 'ok'; renderFiles(); renderSizeHint(); renderPreview(); };
+      im.onerror = function(){ thumbState[file] = 'bad'; renderFiles(); };
+      im.src = src;
+      box.appendChild(im);
+    }
+    thumbs[file] = box;
+    return box;
+  }
+
+  function renderFiles(){
+    var listEl = $('fileList');
+    var list = mergedList();
+    listEl.innerHTML = '';
+    if (!list.length){
+      var e = document.createElement('div'); e.className = 'file-empty';
+      e.textContent = 'Ainda não há vídeos nem imagens na pasta media.';
+      listEl.appendChild(e); return;
+    }
+    list.forEach(function(item, i){
+      var file = item.file, bad = isMissing(file);
+      var row = document.createElement('div');
+      row.className = 'file' + (item.on ? '' : ' off') + (bad ? ' bad' : '');
+
+      var up = document.createElement('button'); up.className = 'icon-btn'; up.textContent = '↑'; up.title = 'Subir'; up.disabled = i === 0;
+      up.addEventListener('click', function(){ var l = mergedList(); var t2 = l[i - 1]; l[i - 1] = l[i]; l[i] = t2; savePlaylist(l); });
+      var down = document.createElement('button'); down.className = 'icon-btn'; down.textContent = '↓'; down.title = 'Descer'; down.disabled = i === list.length - 1;
+      down.addEventListener('click', function(){ var l = mergedList(); var t2 = l[i + 1]; l[i + 1] = l[i]; l[i] = t2; savePlaylist(l); });
+
+      var info = document.createElement('div'); info.className = 'info';
+      var nm = document.createElement('div'); nm.className = 'nm'; nm.textContent = S.baseName(file); nm.title = file;
+      var meta = document.createElement('div'); meta.className = 'meta';
+      if (bad) meta.textContent = 'Não encontrado — apague da lista ou volte a carregar o ficheiro';
+      else {
+        var parts = [S.isVideo(file) ? 'Vídeo' : 'Imagem'];
+        var dm = dims[file];
+        if (dm && dm.w) parts.push(dm.w + '×' + dm.h);
+        if (dm && dm.dur && isFinite(dm.dur)) parts.push(fmtDur(dm.dur));
+        var sz = fmtSize(sizeOf(file)); if (sz) parts.push(sz);
+        if (file.indexOf(S.MEDIA_FOLDER + '/') !== 0) parts.push('fora da pasta media');
+        meta.textContent = parts.join(' · ');
+      }
+      info.appendChild(nm); info.appendChild(meta);
+
+      var sw = document.createElement('label'); sw.className = 'switch'; sw.title = item.on ? 'A mostrar' : 'Desligado';
+      var cb = document.createElement('input'); cb.type = 'checkbox'; cb.checked = item.on; cb.setAttribute('aria-label', 'Mostrar ' + S.baseName(file));
+      cb.addEventListener('change', function(){ var l = mergedList(); l[i].on = cb.checked; savePlaylist(l); });
+      sw.appendChild(cb); sw.appendChild(document.createElement('span'));
+
+      row.appendChild(up); row.appendChild(down); row.appendChild(thumbFor(file)); row.appendChild(info); row.appendChild(sw);
+      if (bad){
+        var del = document.createElement('button'); del.className = 'icon-btn del'; del.textContent = '✕'; del.title = 'Tirar da lista';
+        del.addEventListener('click', function(){ var l = mergedList(); l.splice(i, 1); delete thumbs[file]; delete thumbState[file]; savePlaylist(l); });
+        row.appendChild(del);
+      }
+      listEl.appendChild(row);
+    });
+  }
+
+  function renderFilesStatus(){
+    var el = $('filesStatus'), s = detectState, folder = S.MEDIA_FOLDER;
+    el.classList.toggle('warn', s.st === 'err');
+    if (s.st === 'loading'){ el.textContent = 'A procurar ficheiros na pasta ' + folder + '…'; return; }
+    if (s.st === 'ok'){
+      var n = detected.length, hh = new Date();
+      el.textContent = n + (n === 1 ? ' ficheiro' : ' ficheiros') + ' na pasta ' + folder
+        + (s.repo ? ' (GitHub: ' + s.repo + ')' : '') + ' · atualizado às '
+        + String(hh.getHours()).padStart(2, '0') + ':' + String(hh.getMinutes()).padStart(2, '0');
+      return;
+    }
+    if (s.st === 'err'){
+      var why = {
+        nofolder: 'Ainda não existe a pasta ' + folder + (s.repo ? ' no repositório ' + s.repo : '') + '. No GitHub, em Add file → Upload files, arraste uma pasta chamada ' + folder + ' com os ficheiros lá dentro.',
+        ratelimit: 'O GitHub limita as consultas a 60 por hora. Tente daqui a pouco — o ecrã continua a funcionar normalmente.',
+        network: 'Não foi possível ver a pasta ' + folder + '. A lista abaixo é a que está guardada.',
+        http: 'Não foi possível ver a pasta ' + folder + ' (erro ' + (s.status || '?') + '). A lista abaixo é a que está guardada.'
+      }[s.reason] || 'Não foi possível ver a pasta.';
+      el.textContent = why;
+      return;
+    }
+    el.textContent = '';
+  }
+  function detect(){
+    detectState = { st:'loading' }; renderFilesStatus();
+    S.detectMedia().then(function(res){
+      detected = res.files; detectState = { st:'ok', repo:res.repo };
+      renderFilesStatus(); renderFiles(); renderPreview(); renderSizeHint();
+    }, function(err){
+      detected = null; detectState = { st:'err', reason:err.reason, status:err.status, repo:err.repo || S.githubRepo() };
+      renderFilesStatus(); renderFiles();
+    });
+  }
+  $('refreshMedia').addEventListener('click', function(){
+    thumbs = {}; thumbState = {}; dims = {};     // re-check every file from scratch
+    detect();
+  });
+
+  // first switched-on file whose size is known, for the size hint and preview
+  function firstOn(){
+    var l = mergedList().filter(function(x){ return x.on && !isMissing(x.file); });
+    return l[0] || null;
+  }
+
+  // pixel guidance for HD and Full HD screens
+  function renderSizeHint(){
+    var v = cfg.video;
+    var hd = S.mediaBox(cfg, 1280, 720), fhd = S.mediaBox(cfg, 1920, 1080);
+    var ratio = fhd.w / fhd.h;
+    var ratioTxt = ratio >= 1 ? ratio.toFixed(1).replace('.', ',') + ' : 1' : '1 : ' + (1 / ratio).toFixed(1).replace('.', ',');
+    var html = 'Tamanho da área (aprox.):'
+      + '<div class="k"><span>HD 1280×720</span><b>' + hd.w + ' × ' + hd.h + ' px</b>'
+      + '<span>Full HD 1920×1080</span><b>' + fhd.w + ' × ' + fhd.h + ' px</b></div>'
+      + 'Para ocupar a área toda, use imagens ou vídeos com proporção ≈ <b>' + ratioTxt + '</b> '
+      + '(ex.: <b>' + fhd.w + ' × ' + fhd.h + ' px</b>).';
+    var f0 = firstOn(), sample = null, label = '';
+    if (f0 && dims[f0.file] && dims[f0.file].w){
+      sample = dims[f0.file];
+      label = (S.isVideo(f0.file) ? 'O vídeo ' : 'A imagem ') + '<b>' + S.baseName(f0.file).replace(/</g, '&lt;') + '</b> (' + sample.w + '×' + sample.h + ')';
+    } else { sample = { w:16, h:9 }; label = 'Um vídeo 16:9'; }
+    var f = S.fitInside(sample.w, sample.h, fhd.w, fhd.h);
+    html += '<br>' + label + ' aparece com <b>' + f.w + ' × ' + f.h + ' px</b> em Full HD';
+    html += (f.w >= fhd.w - 4 && f.h >= fhd.h - 4) ? ' — ocupa a área toda.' : ', centrado, com margem ' + (f.w < fhd.w - 4 ? 'dos lados.' : 'em cima e em baixo.');
+    $('sizeHint').innerHTML = html;
+  }
+
+  // voice
+  bindSwitch('speakOn', 'speak');
+  $('voicePt').addEventListener('change', function(){ cfg.voice.pt = $('voicePt').value; put('voice/pt', cfg.voice.pt); });
+  $('voiceEn').addEventListener('change', function(){ cfg.voice.en = $('voiceEn').value; put('voice/en', cfg.voice.en); });
+  $('voiceRate').addEventListener('input', function(){ $('voiceRateOut').textContent = (+$('voiceRate').value).toFixed(2) + '×'; });
+  $('voiceRate').addEventListener('change', function(){ cfg.voice.rate = +$('voiceRate').value; put('voice/rate', cfg.voice.rate); });
+  $('voiceVol').addEventListener('input', function(){ $('voiceVolOut').textContent = $('voiceVol').value + '%'; });
+  $('voiceVol').addEventListener('change', function(){ cfg.voice.volume = (+$('voiceVol').value) / 100; put('voice/volume', cfg.voice.volume); });
+  function sendTest(lang){
+    if (!db) return;
+    var first = cfg.rooms.filter(function(r){ return r.active; })[0];
+    var text = lang === 'en' ? S.fill(cfg.text.en, 12, S.roomSpokenEn(first || { name:'Gabinete 1' }))
+                             : S.fill(cfg.text.pt, 12, first ? first.name : 'Gabinete 1');
+    db.ref('message').set({ text: text, lang: lang, id: Date.now().toString(36) + 't', at: firebase.database.ServerValue.TIMESTAMP })
+      .then(function(){ flash('Teste enviado para o ecrã'); }).catch(fail);
+  }
+  $('testPt').addEventListener('click', function(){ sendTest('pt'); });
+  $('testEn').addEventListener('click', function(){ sendTest('en'); });
+
+  // announcement
+  $('textPt').addEventListener('change', function(){ cfg.text.pt = $('textPt').value.trim() || 'Senha {n}, {room}'; $('textPt').value = cfg.text.pt; put('text/pt', cfg.text.pt); });
+  $('textEn').addEventListener('change', function(){ cfg.text.en = $('textEn').value.trim() || 'Ticket {n}, {room}'; $('textEn').value = cfg.text.en; put('text/en', cfg.text.en); });
+  bindSwitch('chimeOn', 'chime/on');
+  S.CHIMES.forEach(function(c){ var o = document.createElement('option'); o.value = c.id; o.textContent = c.label; $('chimeType').appendChild(o); });
+  $('chimeType').addEventListener('change', function(){ cfg.chime.type = $('chimeType').value; put('chime/type', cfg.chime.type); preview(); });
+  $('chimeVol').addEventListener('input', function(){ $('chimeVolOut').textContent = $('chimeVol').value + '%'; });
+  $('chimeVol').addEventListener('change', function(){ cfg.chime.volume = (+$('chimeVol').value) / 100; put('chime/volume', cfg.chime.volume); preview(); });
+  var actx = null;
+  function preview(){
+    var AC = window.AudioContext || window.webkitAudioContext;
+    if (!AC) return;
+    if (!actx) actx = new AC();
+    if (actx.state === 'suspended') actx.resume();
+    S.playChime(actx, $('chimeType').value, (+$('chimeVol').value) / 100);
+  }
+  $('chimePreview').addEventListener('click', preview);
+
+  // auto-clear
+  bindSwitch('autoClearOn', 'autoClear/on');
+  $('autoClearMin').addEventListener('change', function(){
+    var v = Math.round(S.clamp($('autoClearMin').value, 1, 720));
+    $('autoClearMin').value = v; cfg.autoClear.minutes = v; put('autoClear/minutes', v);
+  });
+  bindSwitch('midnightOn', 'midnight/on', function(on){
+    if (on && db) db.ref('meta/lastReset').set(S.today()).catch(function(){});   // start counting from today
+  });
+  $('clearNow').addEventListener('click', function(){
+    if (!db || !confirm('Limpar todas as senhas do ecrã agora?')) return;
+    var ids = {};
+    Object.keys(queueData).forEach(function(id){ ids[id] = 1; });
+    cfg.rooms.forEach(function(r){ ids[r.id] = 1; });
+    Promise.all(Object.keys(ids).map(function(id){ return db.ref('queue/' + id + '/n').set(0); }))
+      .then(function(){ flash('Ecrã limpo'); }).catch(fail);
+  });
+
+  /* ---------- voices list from the display ---------- */
+  function fillVoiceSelect(sel, lang, current){
+    if (document.activeElement === sel) return;
+    var list = (displayInfo.voices || []).filter(function(v){ return String(v.lang).toLowerCase().indexOf(lang) === 0; });
+    // Portugal before Brazil, Britain before US
+    var pref = lang === 'pt' ? 'pt-pt' : 'en-gb';
+    list.sort(function(a, b){
+      var pa = String(a.lang).toLowerCase().replace('_','-') === pref ? 0 : 1;
+      var pb = String(b.lang).toLowerCase().replace('_','-') === pref ? 0 : 1;
+      return pa - pb || String(a.name).localeCompare(String(b.name));
+    });
+    sel.innerHTML = '';
+    var auto = document.createElement('option'); auto.value = '';
+    auto.textContent = lang === 'pt' ? 'Automática (melhor voz de Portugal disponível)' : 'Automática (melhor voz britânica disponível)';
+    sel.appendChild(auto);
+    var found = false;
+    list.forEach(function(v){
+      var o = document.createElement('option'); o.value = v.name;
+      var l = String(v.lang).toLowerCase().replace('_','-');
+      var where = { 'pt-pt':'Portugal', 'pt-br':'Brasil', 'en-gb':'Reino Unido', 'en-us':'EUA' }[l] || v.lang;
+      o.textContent = v.name + ' — ' + where;
+      if (v.name === current) found = true;
+      sel.appendChild(o);
+    });
+    if (current && !found){
+      var o2 = document.createElement('option'); o2.value = current; o2.textContent = current + ' (não encontrada no ecrã)';
+      sel.appendChild(o2);
+    }
+    sel.value = current || '';
+  }
+  function renderVoiceInfo(){
+    var vs = displayInfo.voices || [];
+    var box = $('voiceInfo');
+    if (!displayInfo.browser){
+      box.innerHTML = 'Ainda não há informação do ecrã. Abra a página do ecrã (<b>display.html</b>) no computador da sala de espera e volte aqui.';
+      return;
+    }
+    var pt = vs.filter(function(v){ return /^pt[-_]pt/i.test(v.lang); }).length;
+    var en = vs.filter(function(v){ return /^en[-_]gb/i.test(v.lang); }).length;
+    var html = 'O ecrã está a usar <b>' + displayInfo.browser + '</b> · ' + pt + ' voz(es) de Portugal · ' + en + ' voz(es) britânica(s).';
+    if (displayInfo.browser !== 'Edge'){
+      html += '<br>Para uma voz masculina de Portugal (<b>Duarte</b>), abra o ecrã no <b>Microsoft Edge</b> em vez do Chrome: o Edge inclui as vozes "Natural" da Microsoft (precisam de internet).';
+    }
+    box.innerHTML = html;
+  }
+
+  /* ---------- render everything from cfg ---------- */
+  function renderAll(force){
+    if (!unlocked) return;
+    renderRooms();
+    $('gridSeg').querySelectorAll('button').forEach(function(b){ b.classList.toggle('on', b.dataset.v === cfg.grid.mode); });
+    setIfIdle($('gridCols'), 'value', String(S.clamp(cfg.grid.cols, 1, 6)));
+    $('colsField').classList.toggle('disabled', cfg.grid.mode !== 'fixed');
+    $('showLogo').checked = !!cfg.showLogo;
+
+    var v = cfg.video, side = S.isSide(v.position);
+    $('mediaOn').checked = !!v.on;
+    document.querySelectorAll('.media-dep').forEach(function(el){ el.classList.toggle('disabled', !v.on); });
+    $('mediaPos').querySelectorAll('button').forEach(function(b){ b.classList.toggle('on', b.dataset.v === v.position); });
+    setIfIdle($('mediaSeconds'), 'value', v.seconds);
+    $('mediaSizeLbl').textContent = side ? 'Largura da área' : 'Altura da área';
+    setIfIdle($('mediaSize'), 'value', side ? v.width : v.size);
+    $('mediaSizeOut').textContent = $('mediaSize').value + '%';
+    renderFiles();
+    renderSizeHint();
+
+    $('speakOn').checked = !!cfg.speak;
+    fillVoiceSelect($('voicePt'), 'pt', cfg.voice.pt);
+    fillVoiceSelect($('voiceEn'), 'en', cfg.voice.en);
+    setIfIdle($('voiceRate'), 'value', cfg.voice.rate);
+    $('voiceRateOut').textContent = (+$('voiceRate').value).toFixed(2) + '×';
+    setIfIdle($('voiceVol'), 'value', Math.round(cfg.voice.volume * 100));
+    $('voiceVolOut').textContent = $('voiceVol').value + '%';
+    renderVoiceInfo();
+
+    setIfIdle($('textPt'), 'value', cfg.text.pt);
+    setIfIdle($('textEn'), 'value', cfg.text.en);
+    $('chimeOn').checked = !!cfg.chime.on;
+    setIfIdle($('chimeType'), 'value', cfg.chime.type);
+    setIfIdle($('chimeVol'), 'value', Math.round(cfg.chime.volume * 100));
+    $('chimeVolOut').textContent = $('chimeVol').value + '%';
+    $('chimeTypeField').classList.toggle('disabled', !cfg.chime.on);
+    $('chimeVolField').classList.toggle('disabled', !cfg.chime.on);
+
+    $('autoClearOn').checked = !!cfg.autoClear.on;
+    setIfIdle($('autoClearMin'), 'value', cfg.autoClear.minutes);
+    $('autoClearMinField').classList.toggle('disabled', !cfg.autoClear.on);
+    $('midnightOn').checked = !!cfg.midnight.on;
+
+    renderPreview();
+  }
+
+  /* ---------- start ---------- */
+  if (!db){ $('gateLoading').innerHTML = '<p>Falta configurar o Firebase em <b>config.js</b>.</p>'; return; }
+  showGate('loading');
+  var first = true;
+  db.ref('settings').on('value', function(snap){
+    cfg = S.merge(snap.val() || {});
+    if (first){
+      first = false;
+      var ok = null;
+      try{ ok = sessionStorage.getItem('senhas-settings-ok'); }catch(e){}
+      if (ok === PW_HASH) unlock(); else showGate('login');
+      return;
+    }
+    renderAll();
+  }, function(err){
+    $('rulesBanner').classList.add('on');
+    $('gateLoading').innerHTML = '<p>Sem acesso às definições (ver aviso acima).</p>';
+    console.error(err);
+  });
+  db.ref('display').on('value', function(snap){ displayInfo = snap.val() || {}; renderAll(); }, function(){});
+  db.ref('queue').on('value', function(snap){ queueData = snap.val() || {}; }, function(){});
+})();
+</script>
+</body>
+</html>

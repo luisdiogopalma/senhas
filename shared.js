@@ -17,8 +17,10 @@
       rooms: rooms.map(function(name, i){ return { id: String(i), name: String(name), active: true }; }),
       grid: { mode: 'auto', cols: 4 },
       showLogo: true,
-      // media area: a looping video, or one image / a slideshow of images
-      video: { on: true, kind: 'video', file: 'video.mp4', images: [], seconds: 8,
+      // media area: a playlist of videos and images from the media/ folder.
+      // Each item: { file: 'media/x.jpg', on: true|false }. video.mp4 at the top
+      // level is kept from the first version so an existing setup keeps playing.
+      video: { on: true, playlist: [{ file: 'video.mp4', on: true }], seconds: 8,
                position: 'bottom', size: 38, width: 35 },
       speak: (typeof SPEAK_ENABLED === 'boolean') ? SPEAK_ENABLED : true,
       voice: { pt: '', en: '', rate: 1, volume: 1 },
@@ -49,12 +51,15 @@
         out[k] = (saved[k] !== undefined && saved[k] !== null) ? saved[k] : d[k];
       }
     });
-    // the image list can come back from the database as an object; make it a clean array
-    var imgs = out.video.images;
-    if (isObj(imgs)) imgs = Object.keys(imgs).sort(function(a, b){ return (+a) - (+b); }).map(function(k){ return imgs[k]; });
-    out.video.images = Array.isArray(imgs) ? imgs.map(function(x){ return String(x || '').trim(); }).filter(Boolean) : [];
+    // the playlist can come back from the database as an object; make it a clean array
+    var pl = (isObj(saved.video) && saved.video.playlist !== undefined) ? saved.video.playlist : d.video.playlist;
+    if (isObj(pl)) pl = Object.keys(pl).sort(function(a, b){ return (+a) - (+b); }).map(function(k){ return pl[k]; });
+    var seen = {};
+    out.video.playlist = (Array.isArray(pl) ? pl : []).filter(function(x){
+      if (!x || !x.file || seen[x.file]) return false;
+      seen[x.file] = 1; return true;
+    }).map(function(x){ return { file: String(x.file), on: x.on !== false }; });
     if (['bottom','top','left','right'].indexOf(out.video.position) === -1) out.video.position = 'bottom';
-    if (out.video.kind !== 'images') out.video.kind = 'video';
 
     var r = saved.rooms;
     if (isObj(r)) r = Object.keys(r).sort(function(a, b){ return (+a) - (+b); }).map(function(k){ return r[k]; });
@@ -122,6 +127,73 @@
       return S.filledRows(n, S.clamp(parseInt(settings.grid.cols, 10) || 4, 1, n));
     }
     return S.balancedRows(n, S.bestCols(n, W, H, gap));
+  };
+
+  /* ---------- media files ---------- */
+  S.MEDIA_FOLDER = (typeof MEDIA_FOLDER === 'string' && MEDIA_FOLDER) ? MEDIA_FOLDER.replace(/\/+$/, '') : 'media';
+  S.VIDEO_EXT = ['mp4', 'webm', 'm4v', 'mov', 'ogv'];
+  S.IMAGE_EXT = ['jpg', 'jpeg', 'png', 'webp', 'gif', 'svg', 'avif'];
+  S.ext = function(f){ var m = /\.([a-z0-9]+)(?:[?#].*)?$/i.exec(String(f)); return m ? m[1].toLowerCase() : ''; };
+  S.isVideo = function(f){ return S.VIDEO_EXT.indexOf(S.ext(f)) !== -1; };
+  S.isImage = function(f){ return S.IMAGE_EXT.indexOf(S.ext(f)) !== -1; };
+  S.isMedia = function(f){ return S.isVideo(f) || S.isImage(f); };
+  /* A path like "media/Cartaz de Verão.jpg" made safe for src="" */
+  S.url = function(path){ return String(path).split('/').map(encodeURIComponent).join('/'); };
+  S.baseName = function(path){ return String(path).split('/').pop(); };
+
+  /* Which repository are these pages served from? "owner/repo", or null.
+     config.js may set MEDIA_REPO = "owner/repo" (needed with a custom web address). */
+  S.githubRepo = function(){
+    if (typeof MEDIA_REPO === 'string' && MEDIA_REPO.indexOf('/') > 0) return MEDIA_REPO;
+    var h = location.hostname.toLowerCase();
+    if (!/\.github\.io$/.test(h)) return null;
+    var owner = h.replace(/\.github\.io$/, '');
+    var seg = location.pathname.split('/').filter(Boolean);
+    // project site: owner.github.io/repo/page.html ; user site: owner.github.io/page.html
+    var repo = (seg.length >= 2 || (seg.length === 1 && !/\.[a-z0-9]+$/i.test(seg[0]))) ? seg[0] : (owner + '.github.io');
+    return owner + '/' + repo;
+  };
+
+  /* Lists the videos/images in the media folder.
+     Resolves to { files: [{ file, size }], source } or rejects with { reason }. */
+  S.detectMedia = function(){
+    var folder = S.MEDIA_FOLDER;
+    var repo = S.githubRepo();
+    function keep(list){
+      return list.filter(function(x){ return S.isMedia(x.file); })
+                 .sort(function(a, b){ return a.file.localeCompare(b.file, 'pt'); });
+    }
+    if (repo){
+      var api = 'https://api.github.com/repos/' + repo + '/contents/' + S.url(folder) + '?t=' + Date.now();
+      return fetch(api, { headers: { 'Accept': 'application/vnd.github+json' } }).then(function(r){
+        if (r.status === 404) throw { reason: 'nofolder', repo: repo };
+        if (r.status === 403 || r.status === 429) throw { reason: 'ratelimit' };
+        if (!r.ok) throw { reason: 'http', status: r.status };
+        return r.json();
+      }).then(function(items){
+        if (!Array.isArray(items)) throw { reason: 'nofolder', repo: repo };
+        return {
+          source: 'github', repo: repo,
+          files: keep(items.filter(function(x){ return x.type === 'file'; })
+                           .map(function(x){ return { file: folder + '/' + x.name, size: x.size }; }))
+        };
+      }, function(err){ throw (err && err.reason) ? err : { reason: 'network' }; });
+    }
+    // Any other server (e.g. the Raspberry Pi later): read the folder's index page.
+    return fetch(S.url(folder) + '/?t=' + Date.now()).then(function(r){
+      if (r.status === 404) throw { reason: 'nofolder' };
+      if (!r.ok) throw { reason: 'http', status: r.status };
+      return r.text();
+    }).then(function(html){
+      var doc = new DOMParser().parseFromString(html, 'text/html');
+      var names = {};
+      [].forEach.call(doc.querySelectorAll('a[href]'), function(a){
+        var href = a.getAttribute('href').split('?')[0].split('#')[0];
+        if (!href || /\/$/.test(href) || /^(https?:|\/|\.\.)/.test(href)) return;
+        try{ names[decodeURIComponent(href)] = 1; }catch(e){}
+      });
+      return { source: 'folder', files: keep(Object.keys(names).map(function(n){ return { file: folder + '/' + n }; })) };
+    }, function(err){ throw (err && err.reason) ? err : { reason: 'network' }; });
   };
 
   /* ---------- media area geometry ----------

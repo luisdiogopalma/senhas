@@ -1,0 +1,464 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Controlo de senhas</title>
+<style>
+  @font-face{font-family:"DIN";font-weight:300;font-style:normal;src:url("DINLig.otf") format("opentype");font-display:swap;}
+  @font-face{font-family:"DIN";font-weight:400;font-style:normal;src:url("DINreg.otf") format("opentype");font-display:swap;}
+  @font-face{font-family:"DIN";font-weight:500;font-style:normal;src:url("DINMed.otf") format("opentype");font-display:swap;}
+  @font-face{font-family:"DIN";font-weight:700;font-style:normal;src:url("DINBol.otf") format("opentype");font-display:swap;}
+  @font-face{font-family:"DIN";font-weight:900;font-style:normal;src:url("DINBla.otf") format("opentype");font-display:swap;}
+
+  :root{
+    --paper:#F6F3EE; --surface:#FFFFFF; --surface-2:#FBF9F5;
+    --line:#E6DFD5; --line-strong:#D5CCBF;
+    --ink:#17110E; --muted:#6B5F58; --placeholder:#A79B8F;
+    --red:#E30613; --red-deep:#AA2A14;
+    --green:#1E7A4C; --green-deep:#16603B;
+    --amber:#F0B429; --amber-ink:#3A2A05; --amber-deep:#E0A31A;
+    --ease-out:cubic-bezier(0.23, 1, 0.32, 1);
+  }
+  *{ box-sizing:border-box; margin:0; padding:0; }
+  body{
+    background:var(--paper); color:var(--ink);
+    font-family:"DIN", system-ui, sans-serif;
+    min-height:100vh; padding: max(1rem, env(safe-area-inset-top)) 1rem 2rem;
+  }
+  .shell{ max-width:460px; margin:0 auto; }
+  header{ display:flex; align-items:center; gap:.75rem; padding:1rem .1rem; border-bottom:3px solid var(--red); margin-bottom:1.1rem; }
+  header .logo{ height:2.6rem; width:auto; }
+  h1{ font-weight:700; font-size:1.3rem; letter-spacing:.01em; }
+  .conn{ margin-left:auto; font-weight:500; font-size:.78rem; color:var(--muted); display:flex; align-items:center; gap:.4rem; white-space:nowrap; }
+  .conn i{ width:8px; height:8px; border-radius:50%; background:var(--green); display:inline-block; }
+  .conn.off i{ background:var(--red); }
+
+  .rooms{ display:flex; flex-wrap:wrap; gap:.4rem; margin-bottom:1.1rem; }
+  .chip{
+    font-family:inherit; font-weight:500; font-size:.95rem; color:var(--muted);
+    background:var(--surface); border:1px solid var(--line); border-radius:999px;
+    padding:.5rem .9rem; cursor:pointer;
+    transition: color .15s ease, border-color .15s ease, background .15s ease;
+  }
+  @media (hover:hover) and (pointer:fine){
+    .chip:hover{ color:var(--ink); border-color:var(--line-strong); }
+  }
+  .chip:focus-visible{ outline:3px solid var(--red); outline-offset:2px; }
+  .chip.active{ background:var(--red); color:#fff; border-color:var(--red); font-weight:700; }
+
+  .prompt{ text-align:center; color:var(--muted); font-weight:500; padding:3rem 1rem; font-size:1.05rem; }
+
+  .pad-area{ display:none; }
+  .pad-area.on{ display:block; }
+
+  .status{ display:flex; align-items:baseline; justify-content:space-between; margin:.2rem .2rem .7rem; }
+  .status .who{ font-weight:700; font-size:1.2rem; }
+  .status .current{ color:var(--muted); font-weight:400; font-size:.95rem; }
+  .status .current b{ color:var(--ink); font-weight:700; font-variant-numeric:tabular-nums; }
+
+  .entry-wrap{ position:relative; margin-bottom:.9rem; }
+  .entry{
+    background:var(--surface); border:1px solid var(--line); border-radius:16px;
+    min-height:5.4rem; display:flex; align-items:center; justify-content:center;
+    font-variant-numeric:tabular-nums; font-weight:900; font-size:3.6rem; line-height:1;
+    color:var(--ink); letter-spacing:.02em; padding:0 3.4rem;   /* symmetric: number stays centred */
+    box-shadow: 0 8px 22px -18px rgba(23,17,14,.35);
+  }
+  .entry.empty{ color:var(--placeholder); font-weight:500; font-size:1.9rem; letter-spacing:.02em; }
+  .entry-erase{
+    position:absolute; right:.7rem; top:50%; transform:translateY(-50%);
+    display:flex; align-items:center; justify-content:center;
+    width:3rem; height:3rem; border-radius:12px;
+    background:transparent; border:0; color:var(--red); cursor:pointer;
+    -webkit-tap-highlight-color:transparent;
+    transition: background .15s ease, transform .1s var(--ease-out);
+  }
+  @media (hover:hover) and (pointer:fine){ .entry-erase:hover{ background:rgba(227,6,19,.08); } }
+  .entry-erase:active{ transform:translateY(-50%) scale(.92); }
+  .entry-erase:focus-visible{ outline:3px solid var(--red); outline-offset:2px; }
+
+  .pad{ display:grid; grid-template-columns:repeat(3,1fr); gap:.6rem; }
+  .key{
+    font-family:inherit; font-weight:700; font-size:2rem; color:var(--ink);
+    background:var(--surface); border:1px solid var(--line); border-radius:16px;
+    padding:1.05rem 0; cursor:pointer; -webkit-tap-highlight-color:transparent;
+    transition: transform .1s var(--ease-out), background .15s ease, border-color .15s ease;
+  }
+  @media (hover:hover) and (pointer:fine){
+    .key:hover{ background:var(--surface-2); border-color:var(--line-strong); }
+  }
+  .key:active{ transform:scale(.96); }
+  .key:focus-visible{ outline:3px solid var(--red); outline-offset:2px; }
+  .key.call{
+    background:var(--green); color:#fff; border-color:var(--green);
+    font-size:1.05rem; text-transform:uppercase; letter-spacing:.03em;
+    display:flex; align-items:center; justify-content:center; gap:.45rem;
+  }
+  .key.call .flag{ width:1.5rem; height:1rem; border-radius:2px; flex:0 0 auto; box-shadow:0 0 0 1px rgba(0,0,0,.12); }
+  @media (hover:hover) and (pointer:fine){
+    .key.call:hover{ background:var(--green-deep); border-color:var(--green-deep); }
+    .key.call.recall:hover{ background:var(--amber-deep); border-color:var(--amber-deep); }
+  }
+  .key.call.recall{ background:var(--amber); color:var(--amber-ink); border-color:var(--amber); }
+  .key.call.flash{ animation:flash .5s var(--ease-out); }
+  @keyframes flash{ 0%{ box-shadow:0 0 0 0 rgba(23,17,14,.35);} 100%{ box-shadow:0 0 0 14px rgba(23,17,14,0);} }
+
+  .footer{ margin-top:1.4rem; text-align:center; }
+  .reset{
+    background:transparent; color:var(--red-deep); border:1px solid rgba(227,6,19,.4);
+    padding:.6rem 1.1rem; border-radius:10px; font-family:inherit; font-weight:500; font-size:.85rem; cursor:pointer;
+    transition: background .15s ease;
+  }
+  @media (hover:hover) and (pointer:fine){ .reset:hover{ background:rgba(227,6,19,.07); } }
+  .reset:focus-visible{ outline:3px solid var(--red); outline-offset:2px; }
+  .hint{ color:var(--muted); font-weight:400; font-size:.82rem; margin-top:.9rem; line-height:1.55; }
+  .hint b{ font-weight:700; color:var(--ink); }
+  .setup-note{ background:rgba(227,6,19,.06); border:1px solid rgba(227,6,19,.35); color:var(--red-deep);
+    font-weight:500; padding:.9rem 1rem; border-radius:12px; font-size:.9rem; line-height:1.5; margin-bottom:1rem; display:none; }
+
+  .settings-link{ display:inline-block; margin-top:.8rem; color:var(--muted); font-size:.8rem; text-decoration:none; }
+  .settings-link:hover{ color:var(--ink); text-decoration:underline; }
+
+  /* 0000 message box */
+  .modal{ position:fixed; inset:0; z-index:30; display:none; align-items:center; justify-content:center;
+    background:rgba(23,17,14,.42); padding:1rem; }
+  .modal.on{ display:flex; }
+  .modal .sheet{ width:100%; max-width:440px; background:var(--surface); border-radius:20px; padding:1.3rem;
+    box-shadow:0 30px 60px -20px rgba(23,17,14,.5); }
+  .modal h2{ font-weight:700; font-size:1.15rem; margin-bottom:.25rem; }
+  .modal .sub{ color:var(--muted); font-size:.85rem; margin-bottom:.9rem; }
+  .modal textarea{ width:100%; min-height:7rem; resize:vertical; font-family:inherit; font-size:1.1rem; color:var(--ink);
+    border:1px solid var(--line-strong); border-radius:12px; padding:.75rem .85rem; background:var(--surface-2); }
+  .modal textarea:focus{ outline:3px solid rgba(227,6,19,.35); outline-offset:1px; border-color:var(--red); }
+  .modal .count{ text-align:right; color:var(--placeholder); font-size:.75rem; margin:.3rem .1rem .8rem; }
+  .modal .send{ display:grid; grid-template-columns:1fr 1fr; gap:.6rem; }
+  .modal .send .key.call{ padding:.9rem 0; }
+  .modal .cancel{ display:block; margin:.9rem auto 0; background:none; border:0; color:var(--muted);
+    font-family:inherit; font-size:.9rem; cursor:pointer; }
+  .modal .cancel:hover{ color:var(--ink); }
+  .toast{ position:fixed; left:50%; bottom:1.4rem; transform:translateX(-50%) translateY(20px); opacity:0;
+    background:var(--ink); color:#fff; font-weight:500; font-size:.9rem; padding:.6rem 1rem; border-radius:10px;
+    transition:opacity .25s ease, transform .25s var(--ease-out); pointer-events:none; z-index:40; }
+  .toast.on{ opacity:1; transform:translateX(-50%) translateY(0); }
+
+  @media (prefers-reduced-motion: reduce){ .key:active{ transform:none; } .key.call.flash{ animation:none; } }
+</style>
+</head>
+<body>
+<div class="shell">
+  <header>
+    <img class="logo" src="logo.svg" alt="G.A.T. CheckpointLX">
+    <h1>Controlo de senhas</h1>
+    <span class="conn off" id="conn"><i></i><span id="connText">a ligar…</span></span>
+  </header>
+
+  <div class="setup-note" id="setupNote">
+    Falta configurar o Firebase em <b>config.js</b>. Segue o guia (<b>setup.html</b>) e recarrega esta página.
+  </div>
+
+  <div class="rooms" id="rooms"></div>
+
+  <p class="prompt" id="prompt">Escolha o seu gabinete acima para começar.</p>
+
+  <div class="pad-area" id="padArea">
+    <div class="status">
+      <span class="who" id="who">Gabinete</span>
+      <span class="current">Na chamada: <b id="current">—</b></span>
+    </div>
+
+    <div class="entry-wrap">
+      <div class="entry empty" id="entry">senha</div>
+      <button class="entry-erase" id="erase" tabindex="-1" title="Apagar" hidden>
+        <svg viewBox="0 0 24 24" width="26" height="26" aria-hidden="true"><path fill="currentColor" d="M9.4 5c-.6 0-1.2.3-1.6.8l-4.5 5.6c-.3.4-.3.9 0 1.2l4.5 5.6c.4.5 1 .8 1.6.8H20c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2H9.4zm3 3.3 2.1 2.1 2.1-2.1c.3-.3.8-.3 1.1 0 .3.3.3.8 0 1.1L15.6 11.5l2.1 2.1c.3.3.3.8 0 1.1-.3.3-.8.3-1.1 0l-2.1-2.1-2.1 2.1c-.3.3-.8.3-1.1 0-.3-.3-.3-.8 0-1.1l2.1-2.1-2.1-2.1c-.3-.3-.3-.8 0-1.1.3-.3.8-.3 1.1 0z"/></svg>
+      </button>
+    </div>
+
+    <div class="pad">
+      <button class="key" data-d="7" tabindex="-1">7</button>
+      <button class="key" data-d="8" tabindex="-1">8</button>
+      <button class="key" data-d="9" tabindex="-1">9</button>
+      <button class="key" data-d="4" tabindex="-1">4</button>
+      <button class="key" data-d="5" tabindex="-1">5</button>
+      <button class="key" data-d="6" tabindex="-1">6</button>
+      <button class="key" data-d="1" tabindex="-1">1</button>
+      <button class="key" data-d="2" tabindex="-1">2</button>
+      <button class="key" data-d="3" tabindex="-1">3</button>
+      <button class="key call" id="callEn" tabindex="-1">
+        <svg class="flag" viewBox="0 0 30 20" aria-hidden="true"><rect width="30" height="20" fill="#012169"/><path d="M0,0 30,20 M30,0 0,20" stroke="#fff" stroke-width="4"/><path d="M0,0 30,20 M30,0 0,20" stroke="#C8102E" stroke-width="1.8"/><rect x="12.5" width="5" height="20" fill="#fff"/><rect y="7.5" width="30" height="5" fill="#fff"/><rect x="13.5" width="3" height="20" fill="#C8102E"/><rect y="8.5" width="30" height="3" fill="#C8102E"/></svg>
+        <span id="callEnLabel">Call</span>
+      </button>
+      <button class="key" data-d="0" tabindex="-1">0</button>
+      <button class="key call" id="callPt" tabindex="-1">
+        <svg class="flag" viewBox="0 0 30 20" aria-hidden="true"><rect width="30" height="20" fill="#DA291C"/><rect width="12" height="20" fill="#046A38"/><circle cx="12" cy="10" r="4.6" fill="#FFE900"/><circle cx="12" cy="10" r="2.6" fill="#DA291C"/><circle cx="12" cy="10" r="2.6" fill="none" stroke="#fff" stroke-width=".9"/></svg>
+        <span id="callPtLabel">Chamar</span>
+      </button>
+    </div>
+  </div>
+
+  <div class="footer">
+    <button class="reset" id="resetAll">Repor tudo a zero</button>
+    <p class="hint">Cada gabinete abre a sua própria página (fica guardada neste dispositivo). Escreva com o teclado numérico e carregue em <b>Enter</b> para chamar. <b>Enter</b> chama em português; o botão <b>Call</b> chama em inglês. Depois de chamar, o botão usado fica amarelo — carregue outra vez para <b>rechamar</b> a mesma senha (ou no outro idioma), e escreva um novo número para recomeçar.</p>
+    <a class="settings-link" href="settings.html">Definições</a>
+  </div>
+</div>
+
+<div class="modal" id="msgModal" role="dialog" aria-modal="true" aria-labelledby="msgTitle">
+  <div class="sheet">
+    <h2 id="msgTitle">Mensagem para o ecrã</h2>
+    <p class="sub">O texto aparece no ecrã da sala de espera e é lido em voz alta.</p>
+    <textarea id="msgInput" maxlength="200" placeholder="Escreva aqui…"></textarea>
+    <div class="count"><span id="msgCount">0</span>/200</div>
+    <div class="send">
+      <button class="key call" id="msgEn">
+        <svg class="flag" viewBox="0 0 30 20" aria-hidden="true"><rect width="30" height="20" fill="#012169"/><path d="M0,0 30,20 M30,0 0,20" stroke="#fff" stroke-width="4"/><path d="M0,0 30,20 M30,0 0,20" stroke="#C8102E" stroke-width="1.8"/><rect x="12.5" width="5" height="20" fill="#fff"/><rect y="7.5" width="30" height="5" fill="#fff"/><rect x="13.5" width="3" height="20" fill="#C8102E"/><rect y="8.5" width="30" height="3" fill="#C8102E"/></svg>
+        <span>Speak</span>
+      </button>
+      <button class="key call" id="msgPt">
+        <svg class="flag" viewBox="0 0 30 20" aria-hidden="true"><rect width="30" height="20" fill="#DA291C"/><rect width="12" height="20" fill="#046A38"/><circle cx="12" cy="10" r="4.6" fill="#FFE900"/><circle cx="12" cy="10" r="2.6" fill="#DA291C"/><circle cx="12" cy="10" r="2.6" fill="none" stroke="#fff" stroke-width=".9"/></svg>
+        <span>Falar</span>
+      </button>
+    </div>
+    <button class="cancel" id="msgCancel">Cancelar</button>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+<script src="config.js"></script>
+<script src="shared.js"></script>
+<script>
+(function(){
+  var S = window.Senhas;
+  var MAX_DIGITS = 4;
+  var db = S.db();
+  if (!db) document.getElementById('setupNote').style.display = 'block';
+
+  var chipsWrap = document.getElementById('rooms');
+  var prompt    = document.getElementById('prompt');
+  var padArea   = document.getElementById('padArea');
+  var whoEl     = document.getElementById('who');
+  var currentEl = document.getElementById('current');
+  var entryEl   = document.getElementById('entry');
+  var eraseBtn  = document.getElementById('erase');
+  var callPt    = document.getElementById('callPt');
+  var callEn    = document.getElementById('callEn');
+  var callPtLabel = document.getElementById('callPtLabel');
+  var callEnLabel = document.getElementById('callEnLabel');
+
+  var settings = S.merge(null);
+  var settingsReady = false;
+  var selected = null;         // room id
+  var entry = '';
+  var justCalled = false;
+  var latest = {};
+
+  function roomById(id){ for (var i=0;i<settings.rooms.length;i++){ if (settings.rooms[i].id === id) return settings.rooms[i]; } return null; }
+  function activeRooms(){ return settings.rooms.filter(function(r){ return r.active; }); }
+
+  // ---- remembering this device's room ----
+  function save(id){ try{ localStorage.setItem('senha-gabinete-id', id); }catch(e){} }
+  function load(){
+    try{
+      var v = localStorage.getItem('senha-gabinete-id');
+      if (v !== null) return v;
+      var old = localStorage.getItem('senha-gabinete');           // older version stored a position
+      if (old !== null && settings.rooms[parseInt(old,10)]) return settings.rooms[parseInt(old,10)].id;
+    }catch(e){}
+    return null;
+  }
+  function fromURL(){
+    var h = location.hash.replace('#','');
+    if (!h) return null;
+    if (h.indexOf('g=') === 0) return decodeURIComponent(h.slice(2));
+    var n = parseInt(h, 10);                                      // older links: #3 = third room
+    return (!isNaN(n) && settings.rooms[n-1]) ? settings.rooms[n-1].id : null;
+  }
+
+  // ---- room chips ----
+  var chips = {};
+  function renderChips(){
+    chipsWrap.innerHTML = ''; chips = {};
+    activeRooms().forEach(function(r){
+      var b = document.createElement('button');
+      b.className = 'chip' + (r.id === selected ? ' active' : '');
+      b.textContent = r.name;
+      b.addEventListener('click', function(){ selectRoom(r.id); });
+      chipsWrap.appendChild(b); chips[r.id] = b;
+    });
+  }
+  function selectRoom(id){
+    var r = roomById(id);
+    if (!r || !r.active){ deselect(); return; }
+    selected = id; save(id);
+    if (history.replaceState) history.replaceState(null, '', '#g=' + encodeURIComponent(id));
+    Object.keys(chips).forEach(function(k){ chips[k].classList.toggle('active', k === id); });
+    prompt.style.display = 'none';
+    padArea.classList.add('on');
+    whoEl.textContent = r.name;
+    clearEntry(); renderCurrent();
+  }
+  function deselect(){
+    selected = null;
+    padArea.classList.remove('on');
+    prompt.style.display = '';
+    Object.keys(chips).forEach(function(k){ chips[k].classList.remove('active'); });
+  }
+
+  function renderCurrent(){
+    if (selected === null) return;
+    var n = S.entryN(latest[selected]);
+    currentEl.textContent = n ? n : '—';
+  }
+
+  function setCallState(called, lang){
+    justCalled = called;
+    callPt.classList.toggle('recall', called && lang === 'pt');
+    callPtLabel.textContent = (called && lang === 'pt') ? 'Rechamar ↻' : 'Chamar';
+    callEn.classList.toggle('recall', called && lang === 'en');
+    callEnLabel.textContent = (called && lang === 'en') ? 'Recall ↻' : 'Call';
+  }
+
+  function renderEntry(){
+    if (entry === ''){ entryEl.textContent = 'senha'; entryEl.classList.add('empty'); }
+    else { entryEl.textContent = entry; entryEl.classList.remove('empty'); }
+    eraseBtn.hidden = (entry === '');
+  }
+
+  // ---- 0000: four zeros on an empty box opens the message box ----
+  var zeroTaps = 0, lastZeroAt = 0;
+  function addDigit(d){
+    if (selected === null) return;
+    if (justCalled){ entry = ''; setCallState(false); }
+    if (d === '0' && entry === ''){
+      var now = Date.now();
+      zeroTaps = (now - lastZeroAt < 2500) ? zeroTaps + 1 : 1;
+      lastZeroAt = now;
+      if (zeroTaps >= 4){ zeroTaps = 0; openMsg(); }
+      renderEntry();
+      return;
+    }
+    zeroTaps = 0;
+    if (entry.length < MAX_DIGITS) entry += d;
+    renderEntry();
+  }
+  function eraseDigit(){ if (justCalled) setCallState(false); entry = entry.slice(0, -1); renderEntry(); }
+  function clearEntry(){ entry = ''; setCallState(false); renderEntry(); }
+
+  function call(lang){
+    if (selected === null || !db) return;
+    var val = parseInt(entry, 10);
+    if (isNaN(val) || val <= 0) return;
+
+    // The same senha never shows in two rooms: clear it from any other room (silently).
+    Object.keys(latest).forEach(function(id){
+      if (id !== selected && S.entryN(latest[id]) === val) db.ref('queue/' + id + '/n').set(0);
+    });
+
+    db.ref('queue/' + selected).transaction(function(cur){
+      cur = cur || {};
+      return { n: val, call: (cur.call || 0) + 1, lang: lang, at: firebase.database.ServerValue.TIMESTAMP };
+    });
+    var btn = (lang === 'en') ? callEn : callPt;
+    btn.classList.remove('flash'); void btn.offsetWidth; btn.classList.add('flash');
+    setCallState(true, lang);
+  }
+
+  document.querySelectorAll('.pad .key[data-d]').forEach(function(k){
+    k.addEventListener('click', function(){ addDigit(k.getAttribute('data-d')); this.blur(); });
+  });
+  eraseBtn.addEventListener('click', function(){ eraseDigit(); this.blur(); });
+  callPt.addEventListener('click', function(){ call('pt'); this.blur(); });
+  callEn.addEventListener('click', function(){ call('en'); this.blur(); });
+
+  // ---- message box ----
+  var modal = document.getElementById('msgModal');
+  var msgInput = document.getElementById('msgInput');
+  var msgCount = document.getElementById('msgCount');
+  function modalOpen(){ return modal.classList.contains('on'); }
+  function openMsg(){
+    modal.classList.add('on');
+    msgInput.value = ''; msgCount.textContent = '0';
+    setTimeout(function(){ msgInput.focus(); }, 30);
+  }
+  function closeMsg(){ modal.classList.remove('on'); msgInput.blur(); }
+  function sendMsg(lang){
+    var text = msgInput.value.trim();
+    if (!text){ msgInput.focus(); return; }
+    if (!db) return;
+    db.ref('message').set({
+      text: text.slice(0, 200), lang: lang,
+      id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
+      at: firebase.database.ServerValue.TIMESTAMP
+    }).then(function(){ toast('Enviado para o ecrã'); })
+      .catch(function(){ toast('Não foi possível enviar — ver regras da base de dados'); });
+    closeMsg();
+  }
+  msgInput.addEventListener('input', function(){ msgCount.textContent = msgInput.value.length; });
+  msgInput.addEventListener('keydown', function(e){
+    if (e.key === 'Enter' && !e.shiftKey){ e.preventDefault(); sendMsg('pt'); }
+  });
+  document.getElementById('msgPt').addEventListener('click', function(){ sendMsg('pt'); });
+  document.getElementById('msgEn').addEventListener('click', function(){ sendMsg('en'); });
+  document.getElementById('msgCancel').addEventListener('click', closeMsg);
+  modal.addEventListener('click', function(e){ if (e.target === modal) closeMsg(); });
+
+  var toastEl = document.getElementById('toast'), toastT;
+  function toast(t){
+    toastEl.textContent = t; toastEl.classList.add('on');
+    clearTimeout(toastT); toastT = setTimeout(function(){ toastEl.classList.remove('on'); }, 2200);
+  }
+
+  // ---- physical keyboard ----
+  document.addEventListener('keydown', function(e){
+    if (modalOpen()){ if (e.key === 'Escape') closeMsg(); return; }
+    if (selected === null) return;
+    if (e.key >= '0' && e.key <= '9'){ addDigit(e.key); }
+    else if (e.key === 'Backspace'){ e.preventDefault(); eraseDigit(); }
+    else if (e.key === 'Enter'){ e.preventDefault(); call('pt'); }
+    else if (e.key === 'Escape'){ clearEntry(); }
+  });
+
+  document.getElementById('resetAll').addEventListener('click', function(){
+    if (!db) return;
+    if (!confirm('Repor TODAS as senhas a zero? Isto limpa o ecrã da sala de espera.')) return;
+    var ids = {};
+    Object.keys(latest).forEach(function(id){ ids[id] = 1; });
+    settings.rooms.forEach(function(r){ ids[r.id] = 1; });
+    Object.keys(ids).forEach(function(id){ db.ref('queue/' + id + '/n').set(0); });
+  });
+
+  function onSettings(){
+    renderChips();
+    if (!settingsReady){
+      settingsReady = true;
+      var initial = fromURL();
+      if (initial === null) initial = load();
+      if (initial !== null) selectRoom(initial);
+      return;
+    }
+    if (selected !== null){
+      var r = roomById(selected);
+      if (!r || !r.active) deselect(); else whoEl.textContent = r.name;
+    }
+  }
+
+  renderEntry();
+
+  if (db){
+    db.ref('settings').on('value', function(snap){ settings = S.merge(snap.val()); onSettings(); },
+                                   function(){ onSettings(); });
+    db.ref('queue').on('value', function(snap){ latest = snap.val() || {}; renderCurrent(); });
+    var conn = document.getElementById('conn'), connText = document.getElementById('connText');
+    db.ref('.info/connected').on('value', function(s){
+      var on = !!s.val(); conn.classList.toggle('off', !on);
+      connText.textContent = on ? 'ligado' : 'sem ligação';
+    });
+  } else {
+    onSettings();
+  }
+})();
+</script>
+</body>
+</html>
